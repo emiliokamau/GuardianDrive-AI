@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}Register - Driver Safety Monitor{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="logo">
+        <h1>🚗 Driver Safety</h1>
+        <p>Create Your Account</p>
+    </div>
+
+    <div id="message" class="message"></div>
+
+    <form id="registerForm">
+        <div class="form-group">
+            <label for="full_name">Full Name</label>
+            <input type="text" id="full_name" name="full_name" required placeholder="John Doe">
+        </div>
+
+        <div class="form-group">
+            <label for="username">Username</label>
+            <input type="text" id="username" name="username" required placeholder="johndoe">
+        </div>
+
+        <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" required placeholder="john@example.com">
+        </div>
+
+        <div class="form-group">
+            <label for="phone">Phone Number</label>
+            <input type="tel" id="phone" name="phone" required placeholder="+254712345678">
+        </div>
+
+        <div class="form-group">
+            <label for="license_number">Driver License Number</label>
+            <input type="text" id="license_number" name="license_number" required placeholder="DL123456">
+        </div>
+
+        <div class="form-group">
+            <label for="vehicle_type">Vehicle Type</label>
+            <select id="vehicle_type" name="vehicle_type" required>
+                <option value="">Select Vehicle Type</option>
+                <option value="Car">Car</option>
+                <option value="Truck">Truck</option>
+                <option value="Bus">Bus</option>
+                <option value="Motorcycle">Motorcycle</option>
+                <option value="Matatu">Matatu</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" required placeholder="Enter strong password">
+        </div>
+
+        <div class="form-group">
+            <label for="password_confirm">Confirm Password</label>
+            <input type="password" id="password_confirm" name="password_confirm" required placeholder="Confirm password">
+        </div>
+
+        <button type="submit">Create Account</button>
+    </form>
+
+    <div class="link">
+        Already have an account? <a href="/login">Login here</a>
+    </div>
+</div>
+
+<script>
+document.getElementById('registerForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const password = document.getElementById('password').value;
+    const password_confirm = document.getElementById('password_confirm').value;
+
+    if (password !== password_confirm) {
+        showMessage('Passwords do not match', 'error');
+        return;
+    }
+
+    const data = {
+        full_name: document.getElementById('full_name').value,
+        username: document.getElementById('username').value,
+        email: document.getElementById('email').value,
+        phone: document.getElementById('phone').value,
+        license_number: document.getElementById('license_number').value,
+        vehicle_type: document.getElementById('vehicle_type').value,
+        password: password
+    };
+
+    try {
+        const response = await fetch('/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showMessage(result.message, 'success');
+            setTimeout(() => {
+                window.location.href = '/login';
+            }, 1500);
+        } else {
+            showMessage(result.message, 'error');
+        }
+    } catch (error) {
+        showMessage('Error: ' + error.message, 'error');
+    }
+});
+</script>
+{% endblock %}

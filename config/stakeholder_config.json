@@ -17,17 +17,17 @@
     "police": {
       "api_endpoint": "https://police-emergency.gov.in/api/incident",
       "api_key": "YOUR_POLICE_API_KEY",
-      "enabled": false
+      "enabled": true
     },
     "ambulance": {
       "api_endpoint": "https://ambulance-108.gov.in/api/request",
       "api_key": "YOUR_AMBULANCE_API_KEY",
-      "enabled": false
+      "enabled": true
     }
   },
   "alert_rules": {
-    "family_alert_threshold": "moderate",
-    "police_alert_threshold": "severe",
+    "family_alert_threshold": "critical",
+    "police_alert_threshold": "critical",
     "ambulance_alert_threshold": "critical",
     "auto_verify_critical": true
   }

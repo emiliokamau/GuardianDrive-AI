@@ -10,7 +10,7 @@
       "priority": 1
     },
     {
-      "name": "Emergency Contact 2", 
+      "name": "Emergency Contact 2",
       "phone": "+91XXXXXXXXXX",
       "email": "emergency2@example.com",
       "relationship": "Friend",
@@ -24,14 +24,14 @@
       "enabled": false
     },
     "traffic_control": {
-      "endpoint": "https://traffic-control.gov.in/incidents", 
+      "endpoint": "https://traffic-control.gov.in/incidents",
       "api_key": "YOUR_TRAFFIC_API_KEY",
       "enabled": false
     }
   },
   "alert_thresholds": {
-    "drowsy_duration": 3.0,
-    "critical_duration": 10.0,
+    "drowsy_duration": 3,
+    "critical_duration": 10,
     "intoxication_confidence": 0.8,
     "perclos_threshold": 0.8,
     "mar_yawn_threshold": 0.6
@@ -43,8 +43,8 @@
     "local_processing_only": true
   },
   "detection_parameters": {
-    "ear_threshold": 0.25,
-    "consecutive_frames": 20,
+    "ear_threshold": 0.3,
+    "consecutive_frames": 200,
     "blink_rate_min": 5,
     "blink_rate_max": 30,
     "head_pose_yaw_limit": 30,

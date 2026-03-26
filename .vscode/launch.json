@@ -1,0 +1,37 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "GuardianDrive: Debug Streamlit (PWA)",
+      "type": "debugpy",
+      "request": "launch",
+      "python": "${workspaceFolder}\\venv\\Scripts\\python.exe",
+      "module": "streamlit",
+      "args": [
+        "run",
+        "streamlit_app/streamlit_app_pwa.py",
+        "--server.port",
+        "8501"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "GuardianDrive: Debug Streamlit (ADAS Page)",
+      "type": "debugpy",
+      "request": "launch",
+      "python": "${workspaceFolder}\\venv\\Scripts\\python.exe",
+      "module": "streamlit",
+      "args": [
+        "run",
+        "streamlit_app/streamlit_app.py",
+        "--server.port",
+        "8502"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": false
+    }
+  ]
+}

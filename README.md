@@ -96,7 +96,26 @@ source venv/bin/activate
 pip install -r requirements.txt
 
 # 4. Run the Drowsiness Detection System
-python -m streamlit run streamlit_app/streamlit_app_pwa.py
+# Recommended: force project venv interpreter
+venv\Scripts\python.exe -m streamlit run streamlit_app/streamlit_app_pwa.py
+
+# Or use the bundled launcher (auto-picks app file)
+venv\Scripts\python.exe run_app.py
+
+# 5. Run Safe Motion web interface (HTML/CSS/JS + FastAPI)
+venv\Scripts\python.exe -m pip install -r requirements.txt
+venv\Scripts\python.exe run_safe_motion_api.py
+# Open http://127.0.0.1:8000
+
+# One-command Windows start scripts
+powershell -ExecutionPolicy Bypass -File .\start_app.ps1
+start_app.bat --port 8502
+
+# VS Code one-click launch
+# Terminal -> Run Task -> "GuardianDrive: Start App (Default)"
+
+# VS Code F5 debug launch
+# Run and Debug -> "GuardianDrive: Debug Streamlit (PWA)"
 ```
 ---
 

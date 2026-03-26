@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Driver Voice Communication</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+
+        .navbar {
+            background: linear-gradient(90deg, #e94560 0%, #0f3460 100%);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .navbar h1 {
+            font-size: 22px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .back-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: all 0.3s;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        .voice-panel {
+            background: linear-gradient(145deg, #1e2a4a, #152238);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .panel-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .panel-header h2 {
+            font-size: 28px;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #00d9ff, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .voice-status {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ff4757;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.active {
+            background: #2ed573;
+        }
+
+        .status-dot.listening {
+            background: #ffa502;
+            animation: pulse 0.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.9); }
+        }
+
+        /* Main Voice Circle */
+        .voice-circle-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 40px 0;
+            position: relative;
+        }
+
+        .voice-circle {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, #e94560, #c0392b);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 40px rgba(233, 69, 96, 0.4);
+            border: 4px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .voice-circle:hover {
+            transform: scale(1.05);
+            box-shadow: 0 15px 50px rgba(233, 69, 96, 0.6);
+        }
+
+        .voice-circle.listening {
+            animation: voiceWave 1s infinite;
+            background: linear-gradient(145deg, #ffa502, #ff7f50);
+        }
+
+        @keyframes voiceWave {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(255, 165, 2, 0.7); }
+            50% { box-shadow: 0 0 0 30px rgba(255, 165, 2, 0); }
+        }
+
+        .voice-circle .icon {
+            font-size: 60px;
+            z-index: 2;
+        }
+
+        .voice-waves {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .wave {
+            width: 8px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 10px;
+            animation: waveAnimation 1s infinite;
+        }
+
+        .wave:nth-child(2) { animation-delay: 0.1s; }
+        .wave:nth-child(3) { animation-delay: 0.2s; }
+        .wave:nth-child(4) { animation-delay: 0.3s; }
+        .wave:nth-child(5) { animation-delay: 0.4s; }
+
+        @keyframes waveAnimation {
+            0%, 100% { height: 20px; }
+            50% { height: 80px; }
+        }
+
+        .voice-circle.listening .wave {
+            display: flex;
+        }
+
+        .voice-circle:not(.listening) .wave {
+            display: none;
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+
+        .control-btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .control-btn.primary {
+            background: linear-gradient(135deg, #00d9ff, #0099ff);
+            color: white;
+        }
+
+        .control-btn.secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .control-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .control-btn.active {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a6f);
+        }
+
+        /* Transcript Area */
+        .transcript-area {
+            margin-top: 30px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            min-height: 120px;
+        }
+
+        .transcript-label {
+            font-size: 14px;
+            color: #888;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .transcript-text {
+            font-size: 18px;
+            line-height: 1.6;
+            color: #00d9ff;
+            min-height: 40px;
+        }
+
+        .transcript-text:empty::before {
+            content: 'Press the microphone and speak...';
+            color: #666;
+            font-style: italic;
+        }
+
+        /* System Response */
+        .response-area {
+            margin-top: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            border-left: 4px solid #2ed573;
+        }
+
+        .response-label {
+            font-size: 14px;
+            color: #888;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .response-text {
+            font-size: 18px;
+            line-height: 1.6;
+            color: #2ed573;
+        }
+
+        /* Alert Panel */
+        .alert-panel {
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(255, 71, 87, 0.1);
+            border: 2px solid #ff4757;
+            border-radius: 15px;
+            display: none;
+        }
+
+        .alert-panel.active {
+            display: block;
+            animation: alertPulse 2s infinite;
+        }
+
+        @keyframes alertPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.4); }
+            50% { box-shadow: 0 0 20px 10px rgba(255, 71, 87, 0); }
+        }
+
+        .alert-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #ff4757;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .alert-message {
+            font-size: 16px;
+            color: #fff;
+        }
+
+        /* Quick Commands */
+        .quick-commands {
+            margin-top: 30px;
+        }
+
+        .quick-commands h3 {
+            font-size: 16px;
+            color: #888;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .command-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .chip {
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 25px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .chip:hover {
+            background: rgba(0, 217, 255, 0.2);
+            border-color: #00d9ff;
+            color: #00d9ff;
+        }
+
+        /* Voice Settings */
+        .settings-panel {
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+        }
+
+        .settings-panel h3 {
+            font-size: 16px;
+            color: #888;
+            margin-bottom: 15px;
+        }
+
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .setting-row:last-child {
+            border-bottom: none;
+        }
+
+        .toggle {
+            width: 50px;
+            height: 26px;
+            background: #333;
+            border-radius: 20px;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .toggle.active {
+            background: #2ed573;
+        }
+
+        .toggle::after {
+            content: '';
+            position: absolute;
+            width: 22px;
+            height: 22px;
+            background: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: all 0.3s;
+        }
+
+        .toggle.active::after {
+            left: 26px;
+        }
+
+        /* Volume indicator */
+        .volume-indicator {
+            position: absolute;
+            bottom: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 3px;
+            align-items: flex-end;
+            height: 20px;
+        }
+
+        .volume-bar {
+            width: 4px;
+            background: #00d9ff;
+            border-radius: 2px;
+            transition: height 0.1s;
+        }
+
+        /* Language selector */
+        .language-select {
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .language-select:focus {
+            outline: none;
+            border-color: #00d9ff;
+        }
+
+        /* Notification toast */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            background: linear-gradient(135deg, #2ed573, #26af61);
+            color: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+
+        .toast.show {
+            transform: translateX(0);
+        }
+
+        .toast.error {
+            background: linear-gradient(135deg, #ff4757, #ff6b81);
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <h1>🚗 Driver Voice Communication</h1>
+        <a href="/dashboard" class="back-btn">← Back to Dashboard</a>
+    </nav>
+
+    <div class="container">
+        <div class="voice-panel">
+            <div class="panel-header">
+                <h2>Real-Time Voice Assistant</h2>
+                <p style="color: #888; margin-top: 10px;">Speak naturally with your AI driving assistant</p>
+            </div>
+
+            <!-- Status Indicators -->
+            <div class="voice-status">
+                <div class="status-badge">
+                    <div class="status-dot" id="micStatus"></div>
+                    <span id="micStatusText">Microphone Ready</span>
+                </div>
+                <div class="status-badge">
+                    <div class="status-dot active" id="speakerStatus"></div>
+                    <span>Speaker Active</span>
+                </div>
+                <div class="status-badge">
+                    <div class="status-dot" id="alertStatus"></div>
+                    <span id="alertStatusText">System Normal</span>
+                </div>
+            </div>
+
+            <!-- Main Voice Button -->
+            <div class="voice-circle-container">
+                <div class="voice-circle" id="voiceBtn">
+                    <div class="voice-waves">
+                        <div class="wave"></div>
+                        <div class="wave"></div>
+                        <div class="wave"></div>
+                        <div class="wave"></div>
+                        <div class="wave"></div>
+                    </div>
+                    <span class="icon" id="voiceIcon">🎤</span>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="controls">
+                <button class="control-btn primary" id="continuousBtn">
+                    <span>🎧</span> Continuous Mode
+                </button>
+                <button class="control-btn secondary" id="testVoiceBtn">
+                    <span>🔊</span> Test Voice
+                </button>
+                <button class="control-btn secondary" id="emergencyBtn" style="background: linear-gradient(135deg, #ff4757, #ff6b81);">
+                    <span>🆘</span> Emergency Alert
+                </button>
+            </div>
+
+            <!-- Driver Speech Transcript -->
+            <div class="transcript-area">
+                <div class="transcript-label">Your Speech</div>
+                <div class="transcript-text" id="transcript"></div>
+            </div>
+
+            <!-- System Response -->
+            <div class="response-area">
+                <div class="response-label">Assistant Response</div>
+                <div class="response-text" id="response">Hello! I'm your driving assistant. How can I help you today?</div>
+            </div>
+
+            <!-- Drowsiness Alert Panel -->
+            <div class="alert-panel" id="alertPanel">
+                <div class="alert-title">
+                    <span>⚠️</span> DROWSINESS ALERT
+                </div>
+                <div class="alert-message" id="alertMessage">
+                    Your fatigue level is high. Please pull over and take a break.
+                </div>
+            </div>
+
+            <!-- Quick Commands -->
+            <div class="quick-commands">
+                <h3>Quick Commands</h3>
+                <div class="command-chips">
+                    <div class="chip" data-command="What is my fatigue level">Fatigue Level</div>
+                    <div class="chip" data-command="What is the weather">Weather</div>
+                    <div class="chip" data-command="Where are the black spots">Black Spots</div>
+                    <div class="chip" data-command="Start driving session">Start Session</div>
+                    <div class="chip" data-command="End driving session">End Session</div>
+                    <div class="chip" data-command="Tell me a safety tip">Safety Tip</div>
+                    <div class="chip" data-command="How long have I been driving">Driving Time</div>
+                    <div class="chip" data-command="Play some music">Play Music</div>
+                </div>
+            </div>
+
+            <!-- Settings -->
+            <div class="settings-panel">
+                <h3>Voice Settings</h3>
+                <div class="setting-row">
+                    <span>Auto-speak responses</span>
+                    <div class="toggle active" id="autoSpeakToggle"></div>
+                </div>
+                <div class="setting-row">
+                    <span>Voice alerts for drowsiness</span>
+                    <div class="toggle active" id="alertToggle"></div>
+                </div>
+                <div class="setting-row">
+                    <span>Continuous listening</span>
+                    <div class="toggle" id="continuousToggle"></div>
+                </div>
+                <div class="setting-row">
+                    <span>Voice language</span>
+                    <select class="language-select" id="languageSelect">
+                        <option value="en-US">English (US)</option>
+                        <option value="en-GB">English (UK)</option>
+                        <option value="sw-KE">Swahili (Kenya)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ============================================
+        // CONFIGURATION
+        // ============================================
+        const metaApiBase = document.querySelector('meta[name="api-base"]')?.content;
+        const DEFAULT_API_BASE = metaApiBase || window.location.origin;
+        const API_BASE = (window.API_BASE_URL || DEFAULT_API_BASE).replace(/\/$/, '');
+        const API_URL = `${API_BASE}/api`;
+        
+        // ============================================
+        // STATE
+        // ============================================
+        let isListening = false;
+        let isContinuousMode = false;
+        let recognition = null;
+        let synth = window.speechSynthesis;
+        let autoSpeak = true;
+        let drowsinessAlerts = true;
+        let currentSessionId = null;
+        
+        // ============================================
+        // SPEECH RECOGNITION SETUP
+        // ============================================
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = 'en-US';
+            
+            recognition.onstart = () => {
+                isListening = true;
+                updateUI();
+                showToast('Voice recognition started');
+            };
+            
+            recognition.onend = () => {
+                isListening = false;
+                updateUI();
+                
+                // Auto-restart in continuous mode
+                if (isContinuousMode) {
+                    setTimeout(() => {
+                        try {
+                            recognition.start();
+                        } catch(e) {}
+                    }, 500);
+                }
+            };
+            
+            recognition.onresult = (event) => {
+                let finalTranscript = '';
+                let interimTranscript = '';
+                
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        finalTranscript += transcript;
+                    } else {
+                        interimTranscript += transcript;
+                    }
+                }
+                
+                if (interimTranscript) {
+                    document.getElementById('transcript').textContent = interimTranscript;
+                }
+                
+                if (finalTranscript) {
+                    document.getElementById('transcript').textContent = finalTranscript;
+                    processVoiceCommand(finalTranscript.toLowerCase().trim());
+                }
+            };
+            
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                showToast('Voice recognition error: ' + event.error, true);
+                isListening = false;
+                updateUI();
+            };
+        } else {
+            showToast('Speech recognition not supported in this browser', true);
+        }
+
+        // ============================================
+        // DOM ELEMENTS
+        // ============================================
+        const voiceBtn = document.getElementById('voiceBtn');
+        const transcript = document.getElementById('transcript');
+        const response = document.getElementById('response');
+        const micStatus = document.getElementById('micStatus');
+        const micStatusText = document.getElementById('micStatusText');
+        const continuousBtn = document.getElementById('continuousBtn');
+        const testVoiceBtn = document.getElementById('testVoiceBtn');
+        const emergencyBtn = document.getElementById('emergencyBtn');
+        const alertPanel = document.getElementById('alertPanel');
+        const alertMessage = document.getElementById('alertMessage');
+        const alertStatus = document.getElementById('alertStatus');
+        const alertStatusText = document.getElementById('alertStatusText');
+
+        // ============================================
+        // EVENT LISTENERS
+        // ============================================
+        voiceBtn.addEventListener('click', toggleVoice);
+        continuousBtn.addEventListener('click', toggleContinuousMode);
+        testVoiceBtn.addEventListener('click', testVoice);
+        emergencyBtn.addEventListener('click', sendEmergencyAlert);
+        
+        // Quick command chips
+        document.querySelectorAll('.chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                const command = chip.dataset.command;
+                processVoiceCommand(command.toLowerCase());
+            });
+        });
+
+        // Settings toggles
+        document.getElementById('autoSpeakToggle').addEventListener('click', function() {
+            this.classList.toggle('active');
+            autoSpeak = this.classList.contains('active');
+        });
+
+        document.getElementById('alertToggle').addEventListener('click', function() {
+            this.classList.toggle('active');
+            drowsinessAlerts = this.classList.contains('active');
+        });
+
+        document.getElementById('continuousToggle').addEventListener('click', function() {
+            this.classList.toggle('active');
+            isContinuousMode = this.classList.contains('active');
+        });
+
+        document.getElementById('languageSelect').addEventListener('change', function() {
+            if (recognition) {
+                recognition.lang = this.value;
+                showToast('Language changed to ' + this.value);
+            }
+        });
+
+        // ============================================
+        // FUNCTIONS
+        // ============================================
+        
+        function toggleVoice() {
+            if (!recognition) {
+                showToast('Speech recognition not available', true);
+                return;
+            }
+            
+            if (isListening) {
+                recognition.stop();
+            } else {
+                try {
+                    recognition.start();
+                } catch(e) {
+                    showToast('Error starting voice recognition', true);
+                }
+            }
+        }
+
+        function toggleContinuousMode() {
+            isContinuousMode = !isContinuousMode;
+            continuousBtn.classList.toggle('active', isContinuousMode);
+            
+            if (isContinuousMode && !isListening) {
+                toggleVoice();
+            }
+            
+            showToast(isContinuousMode ? 'Continuous mode enabled' : 'Continuous mode disabled');
+        }
+
+        function updateUI() {
+            if (isListening) {
+                voiceBtn.classList.add('listening');
+                document.getElementById('voiceIcon').textContent = '🔊';
+                micStatus.classList.add('listening');
+                micStatusText.textContent = 'Listening...';
+            } else {
+                voiceBtn.classList.remove('listening');
+                document.getElementById('voiceIcon').textContent = '🎤';
+                micStatus.classList.remove('listening');
+                micStatusText.textContent = 'Microphone Ready';
+            }
+        }
+
+        function processVoiceCommand(command) {
+            // Show processing indicator
+            response.textContent = 'Processing...';
+            
+            // Get token
+            const token = localStorage.getItem('token') || getCookie('token');
+            if (!token) {
+                response.textContent = 'Please log in to use voice commands.';
+                return;
+            }
+            
+            // Send to chatbot API
+            fetch(`${API_URL}/chatbot/chat`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    message: command
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.response) {
+                    response.textContent = data.response;
+                    document.getElementById('transcript').textContent = command;
+                    
+                    if (autoSpeak) {
+                        speak(data.response);
+                    }
+                } else {
+                    response.textContent = 'I did not understand that. Please try again.';
+                }
+            })
+            .catch(err => {
+                console.error('Error processing command:', err);
+                response.textContent = 'Sorry, there was an error processing your request.';
+            });
+        }
+
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+        }
+
+        function speak(text) {
+            if (!synth) return;
+            
+            // Cancel any ongoing speech
+            synth.cancel();
+            
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = document.getElementById('languageSelect').value;
+            utterance.rate = 1.0;
+            utterance.pitch = 1.0;
+            utterance.volume = 1.0;
+            
+            synth.speak(utterance);
+        }
+
+        function testVoice() {
+            speak('Hello! This is a test of the voice communication system. How are you today?');
+            showToast('Playing test voice message');
+        }
+
+        function sendEmergencyAlert() {
+            fetch(`${API_URL}/voice/emergency`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                const message = 'EMERGENCY ALERT SENT: Emergency contacts have been notified of your location.';
+                response.textContent = message;
+                speak(message);
+                showToast('Emergency alert sent!', true);
+            })
+            .catch(err => {
+                speak('Emergency alert failed to send. Please call emergency services directly.');
+                showToast('Emergency alert failed', true);
+            });
+        }
+
+        function triggerEmergencyProtocol() {
+            alertPanel.classList.add('active');
+            alertStatus.classList.add('active');
+            alertStatusText.textContent = 'ALERT ACTIVE';
+            
+            const message = 'Warning! Drowsiness detected. Please pull over immediately for safety!';
+            alertMessage.textContent = message;
+            speak(message);
+        }
+
+        function showToast(message, isError = false) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast' + (isError ? ' error' : '');
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // ============================================
+        // REAL-TIME DROWSINESS POLLING
+        // ============================================
+        let lastFatigueLevel = 0;
+        
+        function checkDrowsinessStatus() {
+            if (!drowsinessAlerts) return;
+            
+            fetch(`${API_URL}/driver/profile`, {
+                headers: {
+                    'Authorization': 'Bearer ' + getToken()
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.profile) {
+                    const fatigueLevel = data.profile.fatigue_level || 0;
+                    
+                    // Detect significant increase in fatigue
+                    if (fatigueLevel >= 70 && lastFatigueLevel < 70) {
+                        triggerDrowsinessAlert(fatigueLevel);
+                    }
+                    
+                    lastFatigueLevel = fatigueLevel;
+                }
+            })
+            .catch(err => console.error('Error checking drowsiness:', err));
+        }
+
+        function triggerDrowsinessAlert(level) {
+            let message = '';
+            
+            if (level >= 80) {
+                message = `CRITICAL ALERT! Your fatigue level is ${level} percent. Pull over immediately and rest!`;
+            } else if (level >= 60) {
+                message = `Warning! Your fatigue level is ${level} percent. Please take a break soon.`;
+            } else {
+                message = `Note: Your fatigue level is ${level} percent. Stay alert.`;
+            }
+            
+            alertMessage.textContent = message;
+            alertPanel.classList.add('active');
+            alertStatus.classList.add('active');
+            alertStatusText.textContent = 'ALERT ACTIVE';
+            
+            speak(message);
+            
+            // Auto-hide after 30 seconds for lower alerts
+            if (level < 80) {
+                setTimeout(() => {
+                    alertPanel.classList.remove('active');
+                    alertStatus.classList.remove('active');
+                    alertStatusText.textContent = 'System Normal';
+                }, 30000);
+            }
+        }
+
+        function getToken() {
+            // Get token from cookie or localStorage
+            const cookies = document.cookie.split(';');
+            for (let cookie of cookies) {
+                const [name, value] = cookie.trim().split('=');
+                if (name === 'token') return value;
+            }
+            return '';
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            // Check drowsiness every 30 seconds
+            setInterval(checkDrowsinessStatus, 30000);
+            
+            // Initial greeting
+            setTimeout(() => {
+                if (autoSpeak) {
+                    speak('Voice assistant ready. Press the microphone or say hello to begin.');
+                }
+            }, 1500);
+        });
+    </script>
+</body>
+</html>

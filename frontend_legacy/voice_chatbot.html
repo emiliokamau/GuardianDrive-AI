@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚗 Road Safety Voice Chatbot</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            height: 90vh;
+            max-height: 800px;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 20px 20px 0 0;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .status-bar {
+            display: flex;
+            gap: 20px;
+            padding: 15px 20px;
+            background: #f5f5f5;
+            border-bottom: 1px solid #e0e0e0;
+            flex-wrap: wrap;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ff6b6b;
+        }
+
+        .status-indicator.active {
+            background: #51cf66;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .message {
+            display: flex;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message.bot {
+            justify-content: flex-start;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            word-wrap: break-word;
+            line-height: 1.5;
+            font-size: 14px;
+        }
+
+        .user .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 18px 18px 4px 18px;
+        }
+
+        .bot .message-content {
+            background: #e9ecef;
+            color: #333;
+            border-radius: 18px 18px 18px 4px;
+        }
+
+        .input-area {
+            padding: 20px;
+            border-top: 1px solid #e0e0e0;
+            background: white;
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .input-group {
+            flex: 1;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .text-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 24px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: all 0.3s ease;
+        }
+
+        .text-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            padding: 12px 16px;
+            border: none;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 45px;
+            height: 45px;
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+        }
+
+        .btn.recording {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            animation: pulse 1s infinite;
+        }
+
+        .btn-location {
+            background: linear-gradient(135deg, #48dbfb 0%, #0abde3 100%);
+        }
+
+        .info-box {
+            background: #fffacd;
+            border-left: 4px solid #ffc107;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #856404;
+        }
+
+        .info-box.error {
+            background: #f8d7da;
+            border-left-color: #dc3545;
+            color: #721c24;
+        }
+
+        .loading {
+            display: flex;
+            gap: 6px;
+            padding: 12px 16px;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #667eea;
+            animation: bounce 1.4s infinite;
+        }
+
+        .dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes bounce {
+            0%, 80%, 100% { opacity: 0.3; }
+            40% { opacity: 1; }
+        }
+
+        .location-permission {
+            background: #e7f3ff;
+            border: 2px dashed #0066cc;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 13px;
+        }
+
+        .location-permission button {
+            background: #0066cc;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 8px;
+            font-weight: bold;
+        }
+
+        .location-permission button:hover {
+            background: #0052a3;
+        }
+
+        .data-display {
+            background: #f0f0f0;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-top: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .data-display p {
+            margin: 6px 0;
+        }
+
+        .data-display strong {
+            color: #667eea;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                height: 100vh;
+                max-height: none;
+                border-radius: 0;
+            }
+
+            .header {
+                border-radius: 0;
+            }
+
+            .message-content {
+                max-width: 85%;
+            }
+
+            .status-bar {
+                font-size: 12px;
+                gap: 10px;
+            }
+        }
+
+        .transcript {
+            background: #f9f9f9;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #666;
+            margin-top: 5px;
+            font-style: italic;
+        }
+
+        .thinking {
+            color: #999;
+            font-size: 12px;
+            margin-top: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🚗 Road Safety Assistant</h1>
+            <p>AI-Powered Voice Guidance for Safe Driving</p>
+        </div>
+
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <div class="status-item">
+                <div class="status-indicator active"></div>
+                <span id="statusText">Ready</span>
+            </div>
+            <div class="status-item">
+                <span id="locationStatus">📍 No location</span>
+            </div>
+            <div class="status-item">
+                <span id="connectionStatus">🌐 Connected</span>
+            </div>
+        </div>
+
+        <!-- Location Permission Notice -->
+        <div id="locationBox" style="display: none; margin: 0 20px;">
+            <div class="location-permission">
+                <p>🎯 Enable location to get nearby black spots and safety alerts</p>
+                <button onclick="requestLocation()">Enable Location</button>
+            </div>
+        </div>
+
+        <!-- Chat Messages -->
+        <div class="chat-messages" id="chatMessages">
+            <div class="message bot">
+                <div class="message-content">
+                    👋 Hello! I'm your Road Safety Assistant. 
+                    <br><br>
+                    I can help you with:
+                    <br>• 🌤️ Weather conditions
+                    <br>• ⚠️ Black spots and dangerous areas
+                    <br>• 🛡️ Safety recommendations
+                    <br>• 📍 Route information
+                    <br>• 🚗 Speed limits
+                    <br><br>
+                    Just speak or type your question!
+                </div>
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="input-area">
+            <div class="input-group">
+                <input 
+                    type="text" 
+                    class="text-input" 
+                    id="textInput" 
+                    placeholder="Type or use voice button..."
+                    autocomplete="off"
+                >
+                <button class="btn btn-location" id="locationBtn" title="Get my location">📍</button>
+            </div>
+            <button class="btn" id="voiceBtn" title="Click to speak">🎤</button>
+            <button class="btn" id="sendBtn" title="Send message">➤</button>
+        </div>
+    </div>
+
+    <script>
+        // ========================================================================
+        // CONFIGURATION
+        // ========================================================================
+
+        const metaApiBase = document.querySelector('meta[name="api-base"]')?.content;
+        const DEFAULT_API_BASE = metaApiBase || window.location.origin;
+        const API_BASE = (window.API_BASE_URL || DEFAULT_API_BASE).replace(/\/$/, '');
+        const API_URL = `${API_BASE}/api`;
+        const SPEECH_LANG = 'en-US';
+
+        // ========================================================================
+        // STATE
+        // ========================================================================
+
+        let userLocation = null;
+        let isListening = false;
+        let isProcessing = false;
+        let recognitionActive = false;
+
+        // Web Speech API
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+        recognition.language = SPEECH_LANG;
+        recognition.continuous = false;
+        recognition.interimResults = true;
+
+        const synth = window.speechSynthesis;
+
+        // DOM Elements
+        const chatMessages = document.getElementById('chatMessages');
+        const textInput = document.getElementById('textInput');
+        const voiceBtn = document.getElementById('voiceBtn');
+        const sendBtn = document.getElementById('sendBtn');
+        const locationBtn = document.getElementById('locationBtn');
+        const statusText = document.getElementById('statusText');
+        const locationStatus = document.getElementById('locationStatus');
+        const locationBox = document.getElementById('locationBox');
+
+        // ========================================================================
+        // INITIALIZATION
+        // ========================================================================
+
+        function init() {
+            setupVoiceRecognition();
+            setupEventListeners();
+            requestLocationOnLoad();
+            checkAPIHealth();
+        }
+
+        function setupEventListeners() {
+            voiceBtn.addEventListener('click', toggleVoiceRecognition);
+            sendBtn.addEventListener('click', sendMessage);
+            locationBtn.addEventListener('click', requestLocation);
+            textInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') sendMessage();
+            });
+        }
+
+        // ========================================================================
+        // LOCATION MANAGEMENT
+        // ========================================================================
+
+        function requestLocationOnLoad() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        userLocation = {
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude
+                        };
+                        updateLocationStatus();
+                        addSystemMessage('📍 Location detected: ' + Math.round(position.coords.latitude * 100) / 100 + ', ' + Math.round(position.coords.longitude * 100) / 100);
+                    },
+                    () => {
+                        locationBox.style.display = 'block';
+                    }
+                );
+            }
+        }
+
+        function requestLocation() {
+            if (navigator.geolocation) {
+                statusText.textContent = 'Getting location...';
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        userLocation = {
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude
+                        };
+                        updateLocationStatus();
+                        statusText.textContent = 'Ready';
+                        locationBox.style.display = 'none';
+                        addSystemMessage('📍 Location updated!');
+                    },
+                    (error) => {
+                        addSystemMessage('❌ Location access denied. Some features may be limited.');
+                        statusText.textContent = 'Ready';
+                    }
+                );
+            }
+        }
+
+        function updateLocationStatus() {
+            if (userLocation) {
+                locationStatus.textContent = '📍 Location enabled';
+                locationStatus.style.color = '#51cf66';
+            }
+        }
+
+        // ========================================================================
+        // VOICE RECOGNITION
+        // ========================================================================
+
+        function setupVoiceRecognition() {
+            recognition.onstart = () => {
+                isListening = true;
+                recognitionActive = true;
+                voiceBtn.classList.add('recording');
+                statusText.textContent = 'Listening...';
+            };
+
+            recognition.onend = () => {
+                isListening = false;
+                recognitionActive = false;
+                voiceBtn.classList.remove('recording');
+                statusText.textContent = 'Ready';
+            };
+
+            recognition.onresult = (event) => {
+                let interim = '';
+                let final = '';
+
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript;
+
+                    if (event.results[i].isFinal) {
+                        final += transcript + ' ';
+                    } else {
+                        interim += transcript;
+                    }
+                }
+
+                if (final) {
+                    textInput.value = final;
+                    if (recognitionActive && event.results[event.results.length - 1].isFinal) {
+                        sendMessage();
+                    }
+                }
+            };
+
+            recognition.onerror = (event) => {
+                if (event.error !== 'no-speech') {
+                    addSystemMessage('🎤 Voice input error: ' + event.error);
+                }
+            };
+        }
+
+        function toggleVoiceRecognition() {
+            if (isListening) {
+                recognition.stop();
+            } else {
+                textInput.value = '';
+                recognition.start();
+            }
+        }
+
+        function speakResponse(text) {
+            // Cancel any ongoing speech
+            synth.cancel();
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.language = SPEECH_LANG;
+            utterance.rate = 0.95;
+            utterance.pitch = 1;
+
+            synth.speak(utterance);
+        }
+
+        // ========================================================================
+        // MESSAGE HANDLING
+        // ========================================================================
+
+        async function sendMessage() {
+            const message = textInput.value.trim();
+
+            if (!message) return;
+            if (isProcessing) return;
+
+            // Add user message
+            addUserMessage(message);
+            textInput.value = '';
+
+            // Process message
+            isProcessing = true;
+            statusText.textContent = 'Processing...';
+
+            try {
+                const response = await sendChatRequest(message);
+                
+                if (response.response) {
+                    // Add bot response
+                    addBotMessage(response.response);
+                    
+                    // Speak response (optional - comment out if you don't want auto-speak)
+                    speakResponse(cleanResponseForSpeech(response.response));
+                }
+            } catch (error) {
+                addSystemMessage('❌ Error: ' + error.message);
+            } finally {
+                isProcessing = false;
+                statusText.textContent = 'Ready';
+            }
+        }
+
+        async function sendChatRequest(message) {
+            const payload = {
+                message: message,
+                location: userLocation
+            };
+
+            const response = await fetch(`${API_URL}/chat`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                throw new Error(`API error: ${response.statusText}`);
+            }
+
+            return response.json();
+        }
+
+        function cleanResponseForSpeech(text) {
+            // Remove emojis and markdown for better speech synthesis
+            return text
+                .replace(/[\u{1F300}-\u{1F9FF}]/gu, '') // Remove emojis
+                .replace(/[*_`#]/g, '') // Remove markdown
+                .replace(/\n/g, '. ') // Convert newlines to periods
+                .substring(0, 500); // Limit length
+        }
+
+        // ========================================================================
+        // UI UPDATES
+        // ========================================================================
+
+        function addUserMessage(text) {
+            const div = document.createElement('div');
+            div.className = 'message user';
+            div.innerHTML = `<div class="message-content">${escapeHtml(text)}</div>`;
+            chatMessages.appendChild(div);
+            scrollToBottom();
+        }
+
+        function addBotMessage(text) {
+            const div = document.createElement('div');
+            div.className = 'message bot';
+            div.innerHTML = `<div class="message-content">${formatResponse(text)}</div>`;
+            chatMessages.appendChild(div);
+            scrollToBottom();
+        }
+
+        function addSystemMessage(text) {
+            const div = document.createElement('div');
+            div.style.textAlign = 'center';
+            div.style.fontSize = '13px';
+            div.style.color = '#999';
+            div.style.marginTop = '10px';
+            div.innerHTML = text;
+            chatMessages.appendChild(div);
+            scrollToBottom();
+        }
+
+        function formatResponse(text) {
+            return text
+                .replace(/\n/g, '<br>')
+                .replace(/([•✓✅⚠️🌤️📍🛡️🚗])/g, '$1');
+        }
+
+        function scrollToBottom() {
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ========================================================================
+        // API HEALTH CHECK
+        // ========================================================================
+
+        async function checkAPIHealth() {
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                if (response.ok) {
+                    document.getElementById('connectionStatus').textContent = '🌐 Connected';
+                }
+            } catch (error) {
+                document.getElementById('connectionStatus').textContent = '🌐 Offline';
+                addSystemMessage('⚠️ Backend API not running. Make sure to start the Flask server!');
+            }
+        }
+
+        // ========================================================================
+        // STARTUP
+        // ========================================================================
+
+        document.addEventListener('DOMContentLoaded', init);
+
+        // Check for HTTPS or localhost warning
+        if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+            console.warn('Voice recognition works best over HTTPS or localhost');
+        }
+    </script>
+</body>
+</html>

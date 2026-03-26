@@ -1,0 +1,1245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚗 Driver Health & Safety Monitoring System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #667eea;
+            --secondary: #764ba2;
+            --success: #51cf66;
+            --warning: #ffc107;
+            --danger: #ff6b6b;
+            --dark: #2c3e50;
+            --light: #ecf0f1;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .header h1 {
+            color: var(--dark);
+            font-size: 28px;
+        }
+
+        .header .auth-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card h2 {
+            color: var(--dark);
+            margin-bottom: 15px;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #cameraFeed {
+            width: 100%;
+            border-radius: 10px;
+            background: #000;
+            max-height: 400px;
+            object-fit: cover;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .stat-item {
+            background: linear-gradient(135deg, var(--light), #f8f9fa);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 13px;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            color: var(--dark);
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .status-indicator {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        .status-good {
+            background: var(--success);
+        }
+
+        .status-warning {
+            background: var(--warning);
+        }
+
+        .status-danger {
+            background: var(--danger);
+        }
+
+        .alert-box {
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            border-left: 4px solid var(--success);
+            color: #155724;
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            border-left: 4px solid var(--warning);
+            color: #856404;
+        }
+
+        .alert-danger {
+            background: #f8d7da;
+            border-left: 4px solid var(--danger);
+            color: #721c24;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--dark);
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid var(--light);
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .button-group .btn {
+            flex: 1;
+        }
+
+        .health-summary {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .health-summary h3 {
+            margin-bottom: 10px;
+        }
+
+        .health-score {
+            font-size: 32px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .recommendation {
+            background: #e3f2fd;
+            border-left: 4px solid var(--primary);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-size: 14px;
+            color: #1565c0;
+        }
+
+        .session-info {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+
+        .session-info p {
+            margin: 8px 0;
+            color: #555;
+            font-size: 14px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            transition: width 0.3s ease;
+        }
+
+        @media (max-width: 900px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+
+            .header {
+                flex-direction: column;
+                text-align: center;
+            }
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-content h2 {
+            color: var(--dark);
+            margin-bottom: 20px;
+        }
+
+        .close-btn {
+            float: right;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #aaa;
+        }
+
+        .close-btn:hover {
+            color: #000;
+        }
+
+        .tab-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid var(--light);
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-weight: bold;
+            border-bottom: 3px solid transparent;
+            color: #999;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-top: 20px;
+        }
+
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 5px;
+            color: var(--primary);
+            font-size: 12px;
+        }
+
+        .spinner {
+            width: 8px;
+            height: 8px;
+            background: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s infinite;
+        }
+
+        .spinner:nth-child(2) {
+            animation-delay: 0.1s;
+        }
+
+        .spinner:nth-child(3) {
+            animation-delay: 0.2s;
+        }
+
+        @keyframes spin {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+
+        .camera-monitor {
+            position: relative;
+        }
+
+        .camera-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 10px;
+            pointer-events: none;
+        }
+
+        .face-rect {
+            position: absolute;
+            border: 3px solid var(--success);
+            border-radius: 5px;
+        }
+
+        .face-rect.drowsy {
+            border-color: var(--danger);
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <h1>🚗 Driver Health & Safety Monitor</h1>
+        <div class="auth-buttons">
+            <button class="btn btn-primary" id="loginBtn" onclick="showLoginModal()">Login</button>
+            <button class="btn btn-primary" id="registerBtn" onclick="showRegisterModal()">Register</button>
+            <button class="btn btn-danger" id="logoutBtn" onclick="logout()" style="display: none;">Logout</button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container">
+        <!-- Login & Register Modals -->
+        <div id="loginModal" class="modal">
+            <div class="modal-content">
+                <span class="close-btn" onclick="closeModal('loginModal')">&times;</span>
+                <h2>🔐 Driver Login</h2>
+                <form onsubmit="login(event)">
+                    <div class="form-group">
+                        <label>Username</label>
+                        <input type="text" id="loginUsername" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="loginPassword" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Login</button>
+                </form>
+            </div>
+        </div>
+
+        <div id="registerModal" class="modal">
+            <div class="modal-content" style="max-height: 80vh;">
+                <span class="close-btn" onclick="closeModal('registerModal')">&times;</span>
+                <h2>📝 Driver Registration</h2>
+                <form onsubmit="register(event)" style="max-height: 70vh; overflow-y: auto;">
+                    <div class="form-group">
+                        <label>Full Name</label>
+                        <input type="text" id="regFullName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Username</label>
+                        <input type="text" id="regUsername" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="regEmail" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Phone</label>
+                        <input type="tel" id="regPhone" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Driver License Number</label>
+                        <input type="text" id="regLicense" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Vehicle Type</label>
+                        <select id="regVehicle" required>
+                            <option value="">Select vehicle type</option>
+                            <option value="Car">Car</option>
+                            <option value="Truck">Truck</option>
+                            <option value="Bus">Bus</option>
+                            <option value="Motorcycle">Motorcycle</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="regPassword" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Register</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Dashboard (After Login) -->
+        <div id="dashboard" style="display: none;">
+            <div class="main-content">
+                <!-- Camera & Drowsiness Detection -->
+                <div class="card camera-monitor">
+                    <h2>📹 Camera Feed & Drowsiness Detection</h2>
+                    <video id="cameraFeed" autoplay playsinline></video>
+                    <canvas id="cameraOverlay" class="camera-overlay" style="position: absolute; top: 20px; left: 20px;"></canvas>
+                    
+                    <div class="button-group">
+                        <button class="btn btn-primary" onclick="startCamera()">📷 Start Camera</button>
+                        <button class="btn btn-danger" onclick="stopCamera()">🛑 Stop Camera</button>
+                    </div>
+
+                    <div id="drowsinessStatus" class="alert-box alert-success" style="display: none;">
+                        <strong>✅ Status:</strong> You appear alert and focused.
+                    </div>
+
+                    <div class="stats">
+                        <div class="stat-item">
+                            <div class="stat-label">👁️ Eye Closure</div>
+                            <div class="stat-value" id="eyeClosureValue">0%</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">👀 Blink Rate</div>
+                            <div class="stat-value" id="blinkRateValue">0/min</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">😴 Drowsiness</div>
+                            <div class="stat-value" id="drowsinessValue">0%</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">⏱️ Driving Time</div>
+                            <div class="stat-value" id="drivingTimeValue">0h</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Health & Session Control -->
+                <div class="card">
+                    <h2>❤️ Health Status & Session Control</h2>
+                    
+                    <div class="health-summary">
+                        <h3>Current Health Score</h3>
+                        <div class="health-score" id="healthScore">--</div>
+                        <div id="healthStatus">Loading...</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="healthProgressBar" style="width: 50%;"></div>
+                        </div>
+                    </div>
+
+                    <div id="recommendationBox" class="recommendation" style="display: none;"></div>
+
+                    <div class="form-group">
+                        <label>Starting Location</label>
+                        <input type="text" id="startLocation" placeholder="Enter starting location">
+                    </div>
+
+                    <div class="button-group">
+                        <button class="btn btn-primary" onclick="startDrivingSession()">▶️ Start Trip</button>
+                        <button class="btn btn-danger" onclick="endDrivingSession()">⏹️ End Trip</button>
+                    </div>
+
+                    <div id="sessionInfo" class="session-info" style="display: none;">
+                        <p><strong>Trip Status:</strong> <span id="tripStatus">Inactive</span></p>
+                        <p><strong>Driving Time:</strong> <span id="sessionDuration">0h 0m</span></p>
+                        <p><strong>Alerts Received:</strong> <span id="sessionAlerts">0</span></p>
+                        <p><strong>Breaks Taken:</strong> <span id="sessionBreaks">0</span></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Driver Profile & Analytics -->
+            <div class="card" style="grid-column: 1 / -1;">
+                <h2>📊 Driver Profile & Analytics</h2>
+                
+                <div class="tab-buttons">
+                    <button class="tab-btn active" onclick="switchTab('profile')">👤 Profile</button>
+                    <button class="tab-btn" onclick="switchTab('health')">❤️ Health History</button>
+                    <button class="tab-btn" onclick="switchTab('sessions')">🚗 Sessions</button>
+                    <button class="tab-btn" onclick="switchTab('stats')">📈 Statistics</button>
+                </div>
+
+                <!-- Profile Tab -->
+                <div id="profile" class="tab-content active">
+                    <div class="stats">
+                        <div class="stat-item">
+                            <div class="stat-label">👤 Name</div>
+                            <div class="stat-value" id="profileName">--</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">🚗 Vehicle</div>
+                            <div class="stat-value" id="profileVehicle">--</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">⏱️ Total Hours</div>
+                            <div class="stat-value" id="profileTotalHours">0h</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">🏥 Health</div>
+                            <div class="stat-value" id="profileHealth">--</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Health History Tab -->
+                <div id="health" class="tab-content">
+                    <div id="healthHistoryList"></div>
+                </div>
+
+                <!-- Sessions Tab -->
+                <div id="sessions" class="tab-content">
+                    <div id="sessionsList"></div>
+                </div>
+
+                <!-- Statistics Tab -->
+                <div id="stats" class="tab-content">
+                    <div id="statisticsContent"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    
+    <script>
+        // Configuration
+        const API_URL = 'http://localhost:5000/api';
+        let currentToken = null;
+        let currentDriverId = null;
+        let cameraActive = false;
+        let sessionActive = false;
+        let sessionStartTime = null;
+        let currentSession = null;
+
+        // Face detection tracking
+        let eyeClosureTracker = [];
+        let blinkCounter = 0;
+        let lastBlinkTime = Date.now();
+        let drowsinessAlerts = 0;
+
+        // ====================================================================
+        // AUTHENTICATION
+        // ====================================================================
+
+        function showLoginModal() {
+            document.getElementById('loginModal').classList.add('active');
+        }
+
+        function showRegisterModal() {
+            document.getElementById('registerModal').classList.add('active');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        async function login(event) {
+            event.preventDefault();
+            
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            try {
+                const response = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    currentToken = data.token;
+                    currentDriverId = data.driver.id;
+                    
+                    // Update UI
+                    document.getElementById('loginModal').classList.remove('active');
+                    document.getElementById('loginBtn').style.display = 'none';
+                    document.getElementById('registerBtn').style.display = 'none';
+                    document.getElementById('logoutBtn').style.display = 'block';
+                    document.getElementById('dashboard').style.display = 'block';
+                    
+                    // Load driver data
+                    loadDriverProfile();
+                    
+                    alert('✅ Login successful!');
+                } else {
+                    alert('❌ ' + data.error);
+                }
+            } catch (error) {
+                alert('❌ Login failed: ' + error.message);
+            }
+        }
+
+        async function register(event) {
+            event.preventDefault();
+            
+            const data = {
+                full_name: document.getElementById('regFullName').value,
+                username: document.getElementById('regUsername').value,
+                email: document.getElementById('regEmail').value,
+                phone: document.getElementById('regPhone').value,
+                license_number: document.getElementById('regLicense').value,
+                vehicle_type: document.getElementById('regVehicle').value,
+                password: document.getElementById('regPassword').value,
+                license_expiry: '2026-12-31'
+            };
+            
+            try {
+                const response = await fetch(`${API_URL}/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    alert('✅ Registration successful! Please login.');
+                    document.getElementById('registerModal').classList.remove('active');
+                } else {
+                    alert('❌ ' + result.error);
+                }
+            } catch (error) {
+                alert('❌ Registration failed: ' + error.message);
+            }
+        }
+
+        function logout() {
+            currentToken = null;
+            currentDriverId = null;
+            stopCamera();
+            
+            document.getElementById('dashboard').style.display = 'none';
+            document.getElementById('loginBtn').style.display = 'block';
+            document.getElementById('registerBtn').style.display = 'block';
+            document.getElementById('logoutBtn').style.display = 'none';
+            
+            document.getElementById('loginUsername').value = '';
+            document.getElementById('loginPassword').value = '';
+            
+            alert('Logged out successfully');
+        }
+
+        // ====================================================================
+        // CAMERA & DROWSINESS DETECTION
+        // ====================================================================
+
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: { ideal: 640 }, height: { ideal: 480 } },
+                    audio: false
+                });
+                
+                const video = document.getElementById('cameraFeed');
+                video.srcObject = stream;
+                cameraActive = true;
+                
+                // Load face-api models
+                await Promise.all([
+                    faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
+                    faceapi.nets.faceLandmark68Net.loadFromUri('/models'),
+                    faceapi.nets.faceExpressionNet.loadFromUri('/models')
+                ]);
+                
+                detectDrowsiness();
+                
+            } catch (error) {
+                alert('❌ Camera access denied: ' + error.message);
+            }
+        }
+
+        function stopCamera() {
+            const video = document.getElementById('cameraFeed');
+            if (video.srcObject) {
+                video.srcObject.getTracks().forEach(track => track.stop());
+            }
+            cameraActive = false;
+        }
+
+        async function detectDrowsiness() {
+            const video = document.getElementById('cameraFeed');
+            const canvas = document.getElementById('cameraOverlay');
+            const canvasContext = canvas.getContext('2d');
+            
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            
+            while (cameraActive) {
+                const detections = await faceapi
+                    .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
+                    .withFaceLandmarks()
+                    .withFaceExpressions();
+                
+                canvasContext.clearRect(0, 0, canvas.width, canvas.height);
+                
+                if (detections.length > 0) {
+                    const detection = detections[0];
+                    
+                    // Calculate eye closure percentage
+                    const eyeClosure = calculateEyeClosure(detection.landmarks);
+                    eyeClosureTracker.push(eyeClosure);
+                    if (eyeClosureTracker.length > 30) eyeClosureTracker.shift();
+                    
+                    // Calculate blink frequency
+                    const blinkFreq = calculateBlinkFrequency();
+                    
+                    // Get head position
+                    const headPosition = getHeadPosition(detection.landmarks);
+                    
+                    // Check for yawn
+                    const yawnDetected = detection.expressions?.neutral > 0.8;
+                    
+                    // Update UI
+                    document.getElementById('eyeClosureValue').textContent = eyeClosure.toFixed(1) + '%';
+                    document.getElementById('blinkRateValue').textContent = blinkFreq.toFixed(1) + '/min';
+                    
+                    // Calculate drowsiness
+                    const drowsinessScore = calculateDrowsinessScore(
+                        eyeClosure,
+                        blinkFreq,
+                        headPosition,
+                        yawnDetected
+                    );
+                    
+                    document.getElementById('drowsinessValue').textContent = drowsinessScore.toFixed(0) + '%';
+                    
+                    // Send to backend for assessment
+                    if (sessionActive && Math.random() < 0.1) { // Every ~10 frames
+                        assessDrowsiness(eyeClosure, blinkFreq, headPosition, yawnDetected);
+                    }
+                    
+                    // Draw face box
+                    const box = detection.detection.box;
+                    const className = drowsinessScore > 70 ? 'drowsy' : '';
+                    drawFaceBox(canvasContext, box, className);
+                    
+                    // Update drowsiness alert
+                    updateDrowsinessAlert(drowsinessScore);
+                }
+                
+                await new Promise(resolve => requestAnimationFrame(resolve));
+            }
+        }
+
+        function calculateEyeClosure(landmarks) {
+            // Eye landmarks: 36-41 left eye, 42-47 right eye
+            const leftEye = landmarks.getLeftEye();
+            const rightEye = landmarks.getRightEye();
+            
+            // Calculate average eye opening ratio
+            const leftRatio = getEyeAspectRatio(leftEye);
+            const rightRatio = getEyeAspectRatio(rightEye);
+            const avgRatio = (leftRatio + rightRatio) / 2;
+            
+            // Convert to closure percentage (inverse of opening)
+            return Math.max(0, (1 - avgRatio * 4) * 100);
+        }
+
+        function getEyeAspectRatio(eye) {
+            // Calculate vertical/horizontal ratio
+            const vertical1 = distance(eye[1], eye[5]);
+            const vertical2 = distance(eye[2], eye[4]);
+            const horizontal = distance(eye[0], eye[3]);
+            
+            return (vertical1 + vertical2) / (2 * horizontal);
+        }
+
+        function distance(p1, p2) {
+            return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+        }
+
+        function calculateBlinkFrequency() {
+            const now = Date.now();
+            const timeSinceLastBlink = (now - lastBlinkTime) / 1000;
+            
+            if (timeSinceLastBlink > 0.3) {
+                blinkCounter++;
+                lastBlinkTime = now;
+            }
+            
+            // Return blinks per minute
+            return (blinkCounter / Math.max(1, timeSinceLastBlink / 60)) || 0;
+        }
+
+        function getHeadPosition(landmarks) {
+            // Simple head position based on nose and chin
+            const nose = landmarks.getNose()[0];
+            const chin = landmarks.getJawOutline()[8];
+            
+            const verticalTilt = Math.atan2(chin.y - nose.y, chin.x - nose.x) * 180 / Math.PI;
+            
+            if (verticalTilt > 45) return 'down';
+            if (Math.abs(verticalTilt) > 20) return 'tilted';
+            return 'normal';
+        }
+
+        function calculateDrowsinessScore(eyeClosure, blinkFreq, headPos, yawn) {
+            let score = 0;
+            
+            if (eyeClosure > 20) score += 40;
+            else if (eyeClosure > 15) score += 30;
+            else if (eyeClosure > 10) score += 20;
+            
+            if (blinkFreq < 8 || blinkFreq > 20) score += 25;
+            
+            if (headPos === 'down') score += 20;
+            else if (headPos === 'tilted') score += 10;
+            
+            if (yawn) score += 15;
+            
+            return Math.min(100, score);
+        }
+
+        function drawFaceBox(ctx, box, className) {
+            const x = box.x;
+            const y = box.y;
+            const width = box.width;
+            const height = box.height;
+            
+            ctx.strokeStyle = className === 'drowsy' ? '#ff6b6b' : '#51cf66';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(x, y, width, height);
+        }
+
+        function updateDrowsinessAlert(score) {
+            const alertBox = document.getElementById('drowsinessStatus');
+            
+            if (score >= 80) {
+                alertBox.className = 'alert-box alert-danger';
+                alertBox.innerHTML = '<strong>🚨 CRITICAL:</strong> You appear very drowsy! Pull over immediately and rest.';
+                alertBox.style.display = 'block';
+            } else if (score >= 60) {
+                alertBox.className = 'alert-box alert-warning';
+                alertBox.innerHTML = '<strong>⚠️ WARNING:</strong> Signs of drowsiness detected. Take a break soon.';
+                alertBox.style.display = 'block';
+            } else {
+                alertBox.className = 'alert-box alert-success';
+                alertBox.innerHTML = '<strong>✅ Status:</strong> You appear alert and focused.';
+                alertBox.style.display = 'block';
+            }
+        }
+
+        // ====================================================================
+        // SESSION MANAGEMENT
+        // ====================================================================
+
+        async function startDrivingSession() {
+            const location = document.getElementById('startLocation').value || 'Starting Location';
+            
+            try {
+                const response = await fetch(`${API_URL}/driver/start-session`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentToken}`
+                    },
+                    body: JSON.stringify({ location, weather: 'Sunny' })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    sessionActive = true;
+                    currentSession = data.session_id;
+                    sessionStartTime = new Date();
+                    drowsinessAlerts = 0;
+                    
+                    // Update UI
+                    document.getElementById('sessionInfo').style.display = 'block';
+                    document.getElementById('tripStatus').textContent = '🟢 Active';
+                    
+                    // Update timer
+                    updateSessionTimer();
+                    setInterval(updateSessionTimer, 1000);
+                    
+                    alert('✅ Trip started!');
+                } else {
+                    alert('❌ ' + data.error);
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+
+        async function endDrivingSession() {
+            if (!sessionActive) return;
+            
+            try {
+                const response = await fetch(`${API_URL}/driver/end-session/${currentSession}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentToken}`
+                    },
+                    body: JSON.stringify({
+                        location: 'Ending Location',
+                        distance: 0,
+                        average_fatigue: 50,
+                        max_fatigue: 75,
+                        alerts: drowsinessAlerts,
+                        breaks: 0
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    sessionActive = false;
+                    document.getElementById('tripStatus').textContent = '🔴 Inactive';
+                    alert('✅ Trip ended!');
+                    loadDriverProfile();
+                } else {
+                    alert('❌ ' + data.error);
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+
+        function updateSessionTimer() {
+            if (!sessionActive) return;
+            
+            const elapsed = Math.floor((new Date() - sessionStartTime) / 1000);
+            const hours = Math.floor(elapsed / 3600);
+            const minutes = Math.floor((elapsed % 3600) / 60);
+            
+            document.getElementById('sessionDuration').textContent = `${hours}h ${minutes}m`;
+            document.getElementById('drivingTimeValue').textContent = `${hours}h ${minutes}m`;
+        }
+
+        // ====================================================================
+        // DROWSINESS ASSESSMENT
+        // ====================================================================
+
+        async function assessDrowsiness(eyeClosure, blinkFreq, headPos, yawn) {
+            const hoursDriven = (new Date() - sessionStartTime) / 3600000;
+            
+            try {
+                const response = await fetch(`${API_URL}/driver/drowsiness-assessment`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentToken}`
+                    },
+                    body: JSON.stringify({
+                        eye_closure_percentage: eyeClosure,
+                        blink_frequency: blinkFreq,
+                        head_position: headPos,
+                        yawn_detected: yawn,
+                        hours_driven: hoursDriven
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.alert_level === 'high') {
+                    drowsinessAlerts++;
+                    showAlert(data.recommendation);
+                }
+                
+                updateHealthScore(data.fatigue_level);
+                
+            } catch (error) {
+                console.error('Assessment error:', error);
+            }
+        }
+
+        function showAlert(message) {
+            const audio = new Audio('data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQIAAAAAAA==');
+            audio.play();
+            
+            const box = document.getElementById('recommendationBox');
+            box.textContent = message;
+            box.style.display = 'block';
+        }
+
+        // ====================================================================
+        // DRIVER PROFILE & DATA
+        // ====================================================================
+
+        async function loadDriverProfile() {
+            try {
+                const response = await fetch(`${API_URL}/driver/profile`, {
+                    headers: { 'Authorization': `Bearer ${currentToken}` }
+                });
+                
+                const data = await response.json();
+                
+                // Update profile tab
+                document.getElementById('profileName').textContent = data.profile.full_name;
+                document.getElementById('profileVehicle').textContent = data.profile.vehicle_type;
+                document.getElementById('profileTotalHours').textContent = data.health_metrics.total_driving_hours + 'h';
+                document.getElementById('profileHealth').textContent = data.profile.health_status.toUpperCase();
+                
+                updateHealthScore(data.health_metrics.current_fatigue_level);
+                
+                // Load health history
+                loadHealthHistory();
+                loadDrivingSessions();
+                loadStatistics();
+                
+            } catch (error) {
+                console.error('Error loading profile:', error);
+            }
+        }
+
+        async function loadHealthHistory() {
+            try {
+                const response = await fetch(`${API_URL}/driver/health-history`, {
+                    headers: { 'Authorization': `Bearer ${currentToken}` }
+                });
+                
+                const data = await response.json();
+                
+                const html = data.records.slice(0, 10).map(r => `
+                    <div style="padding: 10px; background: #f5f5f5; border-radius: 8px; margin-bottom: 10px;">
+                        <p><strong>Time:</strong> ${new Date(r.timestamp).toLocaleString()}</p>
+                        <p><strong>Fatigue Level:</strong> ${r.fatigue_level}%</p>
+                        <p><strong>Recommendation:</strong> ${r.recommendation}</p>
+                    </div>
+                `).join('');
+                
+                document.getElementById('healthHistoryList').innerHTML = html || 'No health records yet';
+                
+            } catch (error) {
+                console.error('Error loading health history:', error);
+            }
+        }
+
+        async function loadDrivingSessions() {
+            try {
+                const response = await fetch(`${API_URL}/driver/driving-sessions`, {
+                    headers: { 'Authorization': `Bearer ${currentToken}` }
+                });
+                
+                const data = await response.json();
+                
+                const html = data.sessions.slice(0, 10).map(s => `
+                    <div style="padding: 10px; background: #f5f5f5; border-radius: 8px; margin-bottom: 10px;">
+                        <p><strong>Date:</strong> ${new Date(s.start_time).toLocaleDateString()}</p>
+                        <p><strong>Duration:</strong> ${s.duration_hours}h | <strong>Distance:</strong> ${s.distance_km}km</p>
+                        <p><strong>Route:</strong> ${s.start_location} → ${s.end_location}</p>
+                        <p><strong>Alerts:</strong> ${s.alerts} | <strong>Breaks:</strong> ${s.breaks}</p>
+                    </div>
+                `).join('');
+                
+                document.getElementById('sessionsList').innerHTML = html || 'No sessions yet';
+                
+            } catch (error) {
+                console.error('Error loading sessions:', error);
+            }
+        }
+
+        async function loadStatistics() {
+            try {
+                const response = await fetch(`${API_URL}/driver/statistics`, {
+                    headers: { 'Authorization': `Bearer ${currentToken}` }
+                });
+                
+                const data = await response.json();
+                
+                const html = `
+                    <div class="stats">
+                        <div class="stat-item">
+                            <div class="stat-label">⏱️ Last 7 Days</div>
+                            <div class="stat-value">${data.last_week.driving_hours}h</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">🗺️ Distance</div>
+                            <div class="stat-value">${data.last_week.distance_km}km</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">⚠️ Alerts</div>
+                            <div class="stat-value">${data.last_week.alerts}</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">😴 Avg Fatigue</div>
+                            <div class="stat-value">${Math.round(data.last_week.average_fatigue)}%</div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 20px;">
+                        <h3 style="color: #333; margin-bottom: 15px;">📋 Recommendations</h3>
+                        ${data.recommendations.map(r => `<p style="margin: 8px 0; padding: 10px; background: #e3f2fd; border-radius: 8px;">${r}</p>`).join('')}
+                    </div>
+                `;
+                
+                document.getElementById('statisticsContent').innerHTML = html;
+                
+            } catch (error) {
+                console.error('Error loading statistics:', error);
+            }
+        }
+
+        function updateHealthScore(fatigue) {
+            const healthScore = 100 - fatigue;
+            document.getElementById('healthScore').textContent = Math.round(healthScore) + '/100';
+            document.getElementById('healthProgressBar').style.width = healthScore + '%';
+            
+            if (healthScore >= 80) {
+                document.getElementById('healthStatus').textContent = '✅ Excellent';
+                document.getElementById('healthStatus').style.color = '#51cf66';
+            } else if (healthScore >= 60) {
+                document.getElementById('healthStatus').textContent = '⚠️ Good';
+                document.getElementById('healthStatus').style.color = '#ffc107';
+            } else {
+                document.getElementById('healthStatus').textContent = '🚨 Alert';
+                document.getElementById('healthStatus').style.color = '#ff6b6b';
+            }
+        }
+
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // Initialize
+        window.addEventListener('load', () => {
+            // Load models for face detection
+            faceapi.loadTinyFaceDetectorModel('/models');
+        });
+    </script>
+</body>
+</html>

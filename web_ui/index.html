@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Safe Motion</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script defer src="/app.js"></script>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <h1>Safe Motion</h1>
+      <p class="subtle">Model-driven driver safety monitoring</p>
+
+      <nav class="nav-list">
+        <a id="liveTabBtn" class="tab-btn active" href="/live">Live Detection</a>
+        <a id="analyticsTabBtn" class="tab-btn" href="/analytics">Analytics</a>
+        <a id="insuranceTabBtn" class="tab-btn" href="/insurance">Insurance</a>
+        <a id="alertsTabBtn" class="tab-btn" href="/alert-settings">Alert Settings</a>
+      </nav>
+
+      <div class="sidebar-block">
+        <h3>System Status</h3>
+        <p id="apiConnection" class="api-indicator">API: Checking...</p>
+        <p id="monitoringBadge" class="monitoring-indicator inactive">Monitoring: Off</p>
+      </div>
+
+      <div class="sidebar-block">
+        <h3>Privacy</h3>
+        <p>All inference runs through your local backend model.</p>
+      </div>
+
+      <div class="sidebar-block">
+        <h3>Navigation</h3>
+        <ul class="side-nav-meta">
+          <li>Live Detection</li>
+          <li>Analytics</li>
+          <li>Insurance</li>
+          <li>Alert Settings</li>
+        </ul>
+      </div>
+    </aside>
+
+    <main class="main-pane">
+      <section class="top-controls card-slim">
+        <label><input id="soundToggle" type="checkbox" checked> Sound Alerts</label>
+        <label><input id="voiceToggle" type="checkbox"> Voice Alerts</label>
+        <label><input id="darkToggle" type="checkbox" checked> Dark Mode</label>
+        <button id="exportSessionBtn" class="btn secondary" type="button">Export Session</button>
+      </section>
+
+      <section id="livePane" class="live-pane">
+        <div class="camera-card">
+          <div class="card-head">
+            <h2>Live Camera Feed</h2>
+            <button id="toggleBtn" class="btn" type="button">Start</button>
+          </div>
+
+          <div class="camera-wrap">
+            <video id="inputVideo" playsinline muted></video>
+            <canvas id="overlay"></canvas>
+            <div class="hud">
+              <p id="statusText" class="ok">Ready</p>
+              <small id="stateBadge">Status: Ready</small>
+            </div>
+            <div class="hud-right">
+              <div><span>EAR</span><strong id="hudEar">--</strong></div>
+              <div><span>PERCLOS</span><strong id="hudPerclos">--</strong></div>
+              <div><span>Risk</span><strong id="hudRisk">--</strong></div>
+              <div><span>Yaw</span><strong id="hudYaw">--</strong></div>
+              <div><span>Pitch</span><strong id="hudPitch">--</strong></div>
+            </div>
+          </div>
+
+          <div class="risk-strip-wrap">
+            <div id="riskStrip" class="risk-strip"></div>
+          </div>
+
+          <div class="meter-grid">
+            <article class="meter"><label>EAR</label><p id="currentEar">--</p></article>
+            <article class="meter"><label>MAR</label><p id="marMetric">--</p></article>
+            <article class="meter"><label>PERCLOS</label><p id="perclosMetric">--</p></article>
+            <article class="meter"><label>Risk</label><p id="riskMetric">--</p></article>
+            <article class="meter"><label>Alert Frames</label><p id="alertFrames">20</p></article>
+            <article class="meter"><label>Yaw</label><p id="yawMetric">--</p></article>
+            <article class="meter"><label>Pitch</label><p id="pitchMetric">--</p></article>
+            <article class="meter"><label>Blink Rate</label><p id="blinkMetric">--</p></article>
+            <article class="meter"><label>Attention</label><p id="attentionMetric">--</p></article>
+            <article class="meter"><label>Intoxication</label><p id="intoxicationMetric">--</p></article>
+            <article class="meter"><label>Distraction</label><p id="distractionMetric">--</p></article>
+            <article class="meter"><label>Yawn Score</label><p id="yawnMetric">--</p></article>
+            <article class="meter"><label>Cognitive Load</label><p id="cognitiveLoadMetric">--</p></article>
+          </div>
+
+          <div id="sessionSummary" class="session-box">Session summary will appear after analysis starts.</div>
+          <a class="download-link" href="/alarm.wav" download="alarm.wav">Download alarm.wav if needed</a>
+        </div>
+
+        <div class="stats-card">
+          <h2>Live Statistics</h2>
+          <div class="stat-row"><span>Current State</span><strong id="stateLabel">Normal</strong></div>
+          <div class="stat-row"><span>Threshold</span><strong id="earThreshold">0.25</strong></div>
+          <div class="stat-row"><span>FPS</span><strong id="fpsMetric">0.0</strong></div>
+          <div class="stat-row"><span>Latency</span><strong id="latencyMetric">0 ms</strong></div>
+          <div class="stat-row"><span>State Duration</span><strong id="stateDurationMetric">0.0s</strong></div>
+          <div class="stat-row"><span>Frames Analyzed</span><strong id="framesMetric">0</strong></div>
+          <div class="stat-row"><span>Drowsy Events</span><strong id="eventsMetric">0</strong></div>
+        </div>
+      </section>
+
+      <section id="analyticsPane" class="analytics-pane hidden">
+        <article class="analytics-card">
+          <div class="card-head">
+            <h2>Model Analytics</h2>
+            <button id="refreshHistoryBtn" class="btn secondary" type="button">Refresh</button>
+          </div>
+
+          <div class="upload-row">
+            <label for="csvFileInput">Upload real CSV for vehicle dynamics analysis</label>
+            <input id="csvFileInput" type="file" accept=".csv">
+            <button id="analyzeCsvBtn" class="btn secondary" type="button">Analyze CSV</button>
+          </div>
+
+          <div class="meter-grid">
+            <article class="meter"><label>Steering Entropy</label><p id="entropyMetric">--</p></article>
+            <article class="meter"><label>Speed Variability</label><p id="speedVarMetric">--</p></article>
+            <article class="meter"><label>Risk Score</label><p id="riskScoreMetric">--</p></article>
+            <article class="meter"><label>Risk Level</label><p id="riskLevelMetric">--</p></article>
+          </div>
+
+          <div class="chart-grid">
+            <article class="chart-card"><h3>Steering Angle</h3><canvas id="steeringChart"></canvas></article>
+            <article class="chart-card"><h3>Vehicle Speed</h3><canvas id="speedChart"></canvas></article>
+          </div>
+
+          <div id="analyticsInfo" class="session-box">Upload CSV or review live-session history below.</div>
+
+          <article class="analytics-card live-analytics-block">
+            <div class="card-head">
+              <h3>Live Monitoring Trends (Real Time)</h3>
+            </div>
+            <div class="graph-controls">
+              <label for="graphWidthRange">Graph Width (cm)
+                <input id="graphWidthRange" type="range" min="6" max="18" step="1" value="9">
+              </label>
+              <label for="graphHeightRange">Graph Height (cm)
+                <input id="graphHeightRange" type="range" min="5" max="12" step="1" value="5">
+              </label>
+              <button id="resetGraphSizeBtn" class="btn secondary" type="button">Reset Size</button>
+            </div>
+            <div class="chart-grid">
+              <article class="chart-card"><h3>EAR vs Threshold</h3><canvas id="liveEarChart"></canvas></article>
+              <article class="chart-card"><h3>PERCLOS vs Threshold</h3><canvas id="livePerclosChart"></canvas></article>
+              <article class="chart-card"><h3>Intoxication vs Alarm Limit</h3><canvas id="liveIntoxicationChart"></canvas></article>
+              <article class="chart-card"><h3>Risk Score Trend</h3><canvas id="liveRiskChart"></canvas></article>
+            </div>
+          </article>
+
+          <div id="historyEmpty" class="session-box">No analytics history yet.</div>
+          <div class="table-wrap">
+            <table id="historyTable" class="history-table hidden">
+              <thead>
+                <tr>
+                  <th>Time (UTC)</th>
+                  <th>Source</th>
+                  <th>Scenario</th>
+                  <th>Samples</th>
+                  <th>Entropy</th>
+                  <th>Speed Var %</th>
+                  <th>Risk</th>
+                </tr>
+              </thead>
+              <tbody id="historyBody"></tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
+      <section id="insurancePane" class="analytics-pane hidden">
+        <article class="analytics-card">
+          <div class="card-head">
+            <h2>Insurance Insights</h2>
+            <button id="refreshInsuranceBtn" class="btn secondary" type="button">Refresh</button>
+          </div>
+
+          <div class="meter-grid">
+            <article class="meter"><label>Total Sessions</label><p id="insTotalSessions">--</p></article>
+            <article class="meter"><label>Driving Hours</label><p id="insDrivingHours">--</p></article>
+            <article class="meter"><label>Avg Safety Score</label><p id="insSafetyScore">--</p></article>
+            <article class="meter"><label>Risk Category</label><p id="insRiskCategory">--</p></article>
+            <article class="meter"><label>Adjusted Premium (INR)</label><p id="insAdjustedPremium">--</p></article>
+            <article class="meter"><label>Discount %</label><p id="insDiscount">--</p></article>
+          </div>
+
+          <div class="upload-row">
+            <label for="insuranceMonthInput">Monthly summary</label>
+            <input id="insuranceMonthInput" type="month">
+            <button id="loadInsuranceMonthBtn" class="btn secondary" type="button">Load Month</button>
+          </div>
+
+          <div id="insuranceInfo" class="session-box">Insurance data will appear after sessions are generated.</div>
+
+          <div class="table-wrap">
+            <table id="insuranceSessionTable" class="history-table hidden">
+              <thead>
+                <tr>
+                  <th>Session ID</th>
+                  <th>Last Status</th>
+                  <th>Frames</th>
+                  <th>Drowsy Events</th>
+                  <th>Last Risk</th>
+                  <th>Last Update (UTC)</th>
+                </tr>
+              </thead>
+              <tbody id="insuranceSessionBody"></tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
+      <section id="alertsPane" class="analytics-pane hidden">
+        <article class="analytics-card">
+          <div class="card-head">
+            <h2>Alert Settings</h2>
+            <button id="reloadAlertSettingsBtn" class="btn secondary" type="button">Reload</button>
+          </div>
+
+          <div class="settings-grid">
+            <article class="meter">
+              <label>EAR Threshold</label>
+              <input id="cfgEarThreshold" class="field" type="number" step="0.01" min="0" max="1">
+            </article>
+            <article class="meter">
+              <label>Consecutive Frames</label>
+              <input id="cfgConsecutiveFrames" class="field" type="number" step="1" min="1">
+            </article>
+            <article class="meter">
+              <label>Family Alert Threshold</label>
+              <select id="cfgFamilyThreshold" class="field">
+                <option value="minor">minor</option>
+                <option value="moderate">moderate</option>
+                <option value="severe">severe</option>
+                <option value="critical">critical</option>
+              </select>
+            </article>
+            <article class="meter">
+              <label>Police Alert Threshold</label>
+              <select id="cfgPoliceThreshold" class="field">
+                <option value="minor">minor</option>
+                <option value="moderate">moderate</option>
+                <option value="severe">severe</option>
+                <option value="critical">critical</option>
+              </select>
+            </article>
+            <article class="meter">
+              <label>Ambulance Alert Threshold</label>
+              <select id="cfgAmbulanceThreshold" class="field">
+                <option value="minor">minor</option>
+                <option value="moderate">moderate</option>
+                <option value="severe">severe</option>
+                <option value="critical">critical</option>
+              </select>
+            </article>
+            <article class="meter">
+              <label>Auto-Verify Critical</label>
+              <label class="checkbox-line"><input id="cfgAutoVerifyCritical" type="checkbox"> Enable auto verification</label>
+            </article>
+            <article class="meter">
+              <label>Police API Enabled</label>
+              <label class="checkbox-line"><input id="cfgPoliceEnabled" type="checkbox"> Allow police dispatch API</label>
+            </article>
+            <article class="meter">
+              <label>Ambulance API Enabled</label>
+              <label class="checkbox-line"><input id="cfgAmbulanceEnabled" type="checkbox"> Allow ambulance dispatch API</label>
+            </article>
+          </div>
+
+          <div class="upload-row">
+            <label>Apply backend alert configuration</label>
+            <div></div>
+            <button id="saveAlertSettingsBtn" class="btn secondary" type="button">Save Settings</button>
+          </div>
+
+          <div id="alertSettingsInfo" class="session-box">Alert settings are loaded from backend config files.</div>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <audio id="alarmAudio" preload="auto" src="/alarm.mp3"></audio>
+</body>
+</html>
