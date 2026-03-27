@@ -17,6 +17,10 @@ from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 import numpy as np
 import pandas as pd
+try:
+    import onnxruntime as ort
+except Exception:  # noqa: BLE001
+    ort = None
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -37,6 +41,7 @@ CLAHE_CLIP_LIMIT = 2.0
 CLAHE_TILE_GRID = (8, 8)
 LEFT_EYE = [362, 385, 387, 263, 373, 380]
 RIGHT_EYE = [33, 160, 158, 133, 153, 144]
+FATIGUE_ACTION_LABELS = ["fatigue", "nonfatigue"]
 
 
 class AnalyzeFrameRequest(BaseModel):
@@ -70,6 +75,12 @@ class AnalyzeFrameResponse(BaseModel):
     estimated_fps: float = 0.0
     state_duration_sec: float = 0.0
     landmarks: List[List[float]] = []
+    fatigue_action: str = "unknown"
+    fatigue_confidence: float = 0.0
+    fatigue_level_score: float = 0.0
+    fatigue_level: str = "low"
+    fatigue_last_update: str = ""
+    fatigue_model_status: str = "unavailable"
 
 
 class UploadAnalyticsRequest(BaseModel):
@@ -102,6 +113,12 @@ class FaceSessionState:
         self.last_intoxication_score: float = 0.0
         self.last_distraction_score: float = 0.0
         self.last_yawn_score: float = 0.0
+        self.last_fatigue_action: str = "loading"
+        self.last_fatigue_confidence: float = 0.0
+        self.last_fatigue_model_status: str = "loading"
+        self.last_fatigue_level_score: float = 0.0
+        self.last_fatigue_level: str = "low"
+        self.last_fatigue_update: Optional[datetime] = None
         self.last_detection_path: str = "raw"
         self.last_latency_ms: float = 0.0
         self.estimated_fps: float = 0.0
@@ -216,6 +233,7 @@ class DrowsinessEngine:
         self._landmarker = None
         self._init_error: Optional[str] = None
         self._fusion_engine = MultiModalFusionEngine()
+        self._fatigue_runtime = self._init_fatigue_runtime()
         try:
             model_path = Path(MODEL_PATH)
             if not model_path.is_absolute():
@@ -233,6 +251,97 @@ class DrowsinessEngine:
             self._landmarker = vision.FaceLandmarker.create_from_options(options)
         except Exception as exc:  # noqa: BLE001
             self._init_error = f"Failed to initialize FaceLandmarker: {exc}"
+
+    @staticmethod
+    def _init_fatigue_runtime() -> dict:
+        runtime = {
+            "available": False,
+            "status": "onnxruntime-not-installed",
+            "sessions": [],
+            "errors": [],
+            "loaded_models": [],
+        }
+
+        if ort is None:
+            return runtime
+
+        model_dir = Path(__file__).resolve().parents[2] / "models" / "fatigue_level_detection"
+        candidate_paths = [
+            model_dir / "fatigue_binary.onnx",
+            model_dir / "model_random.onnx",
+            model_dir / "model_split.onnx",
+        ]
+        onnx_paths = [path for path in candidate_paths if path.exists()]
+
+        if not onnx_paths:
+            runtime["status"] = "no-onnx-models-found"
+            runtime["errors"] = [f"Missing ONNX model directory or files at: {model_dir}"]
+            return runtime
+
+        loaded_sessions = []
+        loaded_models = []
+        errors = []
+        for model_path in onnx_paths:
+            try:
+                sess = ort.InferenceSession(str(model_path), providers=["CPUExecutionProvider"])
+                loaded_sessions.append(sess)
+                loaded_models.append(model_path.name)
+            except Exception as exc:  # noqa: BLE001
+                errors.append(f"Failed loading {model_path.name}: {exc}")
+
+        runtime["sessions"] = loaded_sessions
+        runtime["loaded_models"] = loaded_models
+        runtime["errors"] = errors
+        if loaded_sessions:
+            runtime["available"] = True
+            runtime["status"] = f"ready ({len(loaded_sessions)} model(s): {', '.join(loaded_models)})"
+        else:
+            runtime["status"] = "; ".join(errors) if errors else "no-onnx-models-found"
+        return runtime
+
+    def _infer_fatigue_action(self, frame_bgr: np.ndarray) -> Tuple[str, float, str]:
+        if not self._fatigue_runtime.get("available"):
+            return "unknown", 0.0, self._fatigue_runtime.get("status", "unavailable")
+
+        resized = cv2.resize(frame_bgr, (224, 224), interpolation=cv2.INTER_AREA)
+        input_rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
+        base_input = np.expand_dims(input_rgb, axis=0)
+
+        probs_accumulator: List[np.ndarray] = []
+        for sess in self._fatigue_runtime.get("sessions", []):
+            try:
+                input_meta = sess.get_inputs()[0]
+                input_name = input_meta.name
+                model_input = base_input.astype(np.float32)
+                if input_meta.type in {"tensor(uint8)", "tensor(int8)"}:
+                    model_input = base_input.astype(np.uint8)
+
+                output = sess.run(None, {input_name: model_input})[0]
+                probs = np.asarray(output, dtype=np.float32).reshape(-1)
+                if probs.size < len(FATIGUE_ACTION_LABELS):
+                    continue
+                probs_accumulator.append(probs[: len(FATIGUE_ACTION_LABELS)])
+            except Exception:
+                continue
+
+        if not probs_accumulator:
+            return "unknown", 0.0, "onnx-inference-failed"
+
+        mean_probs = np.mean(np.vstack(probs_accumulator), axis=0)
+        pred_idx = int(np.argmax(mean_probs))
+        pred_label = FATIGUE_ACTION_LABELS[pred_idx]
+        pred_conf = float(np.clip(mean_probs[pred_idx], 0.0, 1.0))
+        return pred_label, pred_conf, "ready"
+
+    @staticmethod
+    def _fatigue_level_label(score: float) -> str:
+        if score >= 0.70:
+            return "high"
+        if score >= 0.45:
+            return "moderate"
+        if score >= 0.25:
+            return "mild"
+        return "low"
 
     @staticmethod
     def _distance(p1: Tuple[float, float], p2: Tuple[float, float]) -> float:
@@ -322,15 +431,29 @@ class DrowsinessEngine:
     def analyze(self, session_id: str, image_base64: str) -> AnalyzeFrameResponse:
         started = datetime.now(timezone.utc)
         if self._landmarker is None:
+            fatigue_action = "unknown"
+            fatigue_confidence = 0.0
+            fatigue_level_score = 0.0
+            fatigue_level = "low"
+            fatigue_model_status = self._fatigue_runtime.get("status", "unavailable")
+            try:
+                frame_bgr = self._decode_base64_image(image_base64)
+                fatigue_action, fatigue_confidence, fatigue_model_status = self._infer_fatigue_action(frame_bgr)
+                fatigue_level_score = float(np.clip(fatigue_confidence if fatigue_action == "fatigue" else 0.0, 0.0, 1.0))
+                fatigue_level = self._fatigue_level_label(fatigue_level_score)
+            except Exception:
+                pass
+
+            fatigue_last_update = datetime.now(timezone.utc).isoformat() if fatigue_action in {"fatigue", "nonfatigue"} else ""
             latency_ms = (datetime.now(timezone.utc) - started).total_seconds() * 1000.0
             return AnalyzeFrameResponse(
-                success=False,
+                success=True,
                 session_id=session_id,
                 face_detected=False,
                 ear=None,
                 frame_count_below_threshold=0,
                 drowsy=False,
-                status=f"Engine Unavailable: {self._init_error}",
+                status=f"Face model unavailable; fatigue-only mode: {self._init_error}",
                 perclos=0.0,
                 risk_score=0.0,
                 yaw=0.0,
@@ -349,6 +472,12 @@ class DrowsinessEngine:
                 estimated_fps=0.0,
                 state_duration_sec=0.0,
                 landmarks=[],
+                fatigue_action=fatigue_action,
+                fatigue_confidence=round(fatigue_confidence, 4),
+                fatigue_level_score=round(fatigue_level_score, 4),
+                fatigue_level=fatigue_level,
+                fatigue_last_update=fatigue_last_update,
+                fatigue_model_status=fatigue_model_status,
             )
 
         original_bgr = self._decode_base64_image(image_base64)
@@ -382,10 +511,11 @@ class DrowsinessEngine:
                 elapsed = (now - session.created_at).total_seconds()
                 session.estimated_fps = (session.analyzed_frames / elapsed) if elapsed > 0 else 0.0
                 session.last_latency_ms = (now - started).total_seconds() * 1000.0
-                if session.last_status != "No Face":
+                if session.last_status != "Scanning":
                     session.state_since = now
-                session.last_status = "No Face"
+                session.last_status = "Scanning"
                 session.last_update = now
+                fatigue_last_update = session.last_fatigue_update.isoformat() if session.last_fatigue_update else ""
                 return AnalyzeFrameResponse(
                     success=True,
                     session_id=session_id,
@@ -393,7 +523,7 @@ class DrowsinessEngine:
                     ear=None,
                     frame_count_below_threshold=0,
                     drowsy=False,
-                    status="No Face",
+                    status="Scanning",
                     perclos=session.last_perclos,
                     risk_score=session.last_risk,
                     yaw=session.last_yaw,
@@ -406,12 +536,18 @@ class DrowsinessEngine:
                     intoxication_score=session.last_intoxication_score,
                     distraction_score=session.last_distraction_score,
                     yawn_score=session.last_yawn_score,
-                    driver_state="No Face",
+                    driver_state="Scanning",
                     detection_path=detection_path,
                     latency_ms=round(session.last_latency_ms, 2),
                     estimated_fps=round(session.estimated_fps, 2),
                     state_duration_sec=round((now - session.state_since).total_seconds(), 2),
                     landmarks=[],
+                    fatigue_action=session.last_fatigue_action,
+                    fatigue_confidence=round(session.last_fatigue_confidence, 4),
+                    fatigue_level_score=round(session.last_fatigue_level_score, 4),
+                    fatigue_level=session.last_fatigue_level,
+                    fatigue_last_update=fatigue_last_update,
+                    fatigue_model_status=session.last_fatigue_model_status,
                 )
 
             face_landmarks = detection_result.face_landmarks[0]
@@ -428,21 +564,54 @@ class DrowsinessEngine:
             cognitive_load = float(fused_metrics.cognitive_load)
 
             signals = fused_metrics.signals or {}
-            intoxication_score = float(
+            fatigue_action, fatigue_confidence, fatigue_model_status = self._infer_fatigue_action(active_bgr)
+            head_pose_norm = float(np.clip(signals.get("head_pose_drift", 0) / 3.0, 0.0, 1.0))
+            gaze_norm = float(np.clip(signals.get("gaze_stability", 0) / 3.0, 0.0, 1.0))
+            blink_norm = float(np.clip(signals.get("blink_pattern", 0) / 3.0, 0.0, 1.0))
+            steering_norm = float(np.clip(signals.get("steering_instability", 0) / 3.0, 0.0, 1.0))
+            intox_raw = (
+                0.35 * head_pose_norm
+                + 0.25 * gaze_norm
+                + 0.20 * blink_norm
+                + 0.20 * steering_norm
+            )
+            strong_signal_count = sum(val > 0.6 for val in [head_pose_norm, gaze_norm, blink_norm, steering_norm])
+            if strong_signal_count < 4:
+                intox_raw *= 0.35
+            if strong_signal_count < 3:
+                intox_raw *= 0.5
+            if strong_signal_count < 2:
+                intox_raw *= 0.5
+            intoxication_score = float(np.clip(intox_raw, 0.0, 1.0))
+            distraction_score = float(np.clip(signals.get("distraction", 0) / 3.0, 0.0, 1.0))
+            yawn_score = float(np.clip(signals.get("yawning", 0) / 3.0, 0.0, 1.0))
+
+            fatigue_prob = 0.0
+            if fatigue_action == "fatigue":
+                fatigue_prob = float(np.clip(fatigue_confidence, 0.0, 1.0))
+            elif fatigue_action == "nonfatigue":
+                fatigue_prob = float(np.clip(1.0 - fatigue_confidence, 0.0, 1.0))
+
+            behavioral_fatigue = float(
                 np.clip(
-                    (
-                        signals.get("head_pose_drift", 0)
-                        + signals.get("gaze_stability", 0)
-                        + signals.get("blink_pattern", 0)
-                        + signals.get("steering_instability", 0)
-                    )
-                    / 12.0,
+                    0.60 * perclos
+                    + 0.25 * yawn_score
+                    + 0.15 * max(0.0, 0.2 - attention_score),
                     0.0,
                     1.0,
                 )
             )
-            distraction_score = float(np.clip(signals.get("distraction", 0) / 3.0, 0.0, 1.0))
-            yawn_score = float(np.clip(signals.get("yawning", 0) / 3.0, 0.0, 1.0))
+            fatigue_instant = float(np.clip(0.70 * fatigue_prob + 0.30 * behavioral_fatigue, 0.0, 1.0))
+            fatigue_level_score = float(
+                np.clip(0.82 * session.last_fatigue_level_score + 0.18 * fatigue_instant, 0.0, 1.0)
+            )
+            if fatigue_action == "fatigue" and fatigue_confidence > 0.80:
+                fatigue_level_score = float(np.clip(max(fatigue_level_score, session.last_fatigue_level_score + 0.08), 0.0, 1.0))
+            elif fatigue_action == "nonfatigue" and fatigue_confidence > 0.80:
+                fatigue_level_score = float(np.clip(min(fatigue_level_score, session.last_fatigue_level_score - 0.06), 0.0, 1.0))
+            fatigue_level = self._fatigue_level_label(fatigue_level_score)
+
+            fatigue_has_real_analytics = fatigue_action in {"fatigue", "nonfatigue"}
 
             risk_score = float(np.clip(fused_metrics.confidence, 0.0, 1.0))
             status = str(fused_state.value)
@@ -476,6 +645,13 @@ class DrowsinessEngine:
             session.last_intoxication_score = intoxication_score
             session.last_distraction_score = distraction_score
             session.last_yawn_score = yawn_score
+            if fatigue_has_real_analytics:
+                session.last_fatigue_action = fatigue_action
+                session.last_fatigue_confidence = fatigue_confidence
+                session.last_fatigue_model_status = fatigue_model_status
+                session.last_fatigue_level_score = fatigue_level_score
+                session.last_fatigue_level = fatigue_level
+                session.last_fatigue_update = now
             session.last_detection_path = detection_path
             elapsed = (now - session.created_at).total_seconds()
             session.estimated_fps = (session.analyzed_frames / elapsed) if elapsed > 0 else 0.0
@@ -486,6 +662,8 @@ class DrowsinessEngine:
             session.last_update = now
             if drowsy:
                 session.drowsy_events += 1
+
+            fatigue_last_update = session.last_fatigue_update.isoformat() if session.last_fatigue_update else ""
 
             return AnalyzeFrameResponse(
                 success=True,
@@ -513,6 +691,12 @@ class DrowsinessEngine:
                 estimated_fps=round(session.estimated_fps, 2),
                 state_duration_sec=round((now - session.state_since).total_seconds(), 2),
                 landmarks=self._sample_landmarks(landmarks),
+                fatigue_action=fatigue_action,
+                fatigue_confidence=round(fatigue_confidence, 4),
+                fatigue_level_score=round(fatigue_level_score, 4),
+                fatigue_level=fatigue_level,
+                fatigue_last_update=fatigue_last_update,
+                fatigue_model_status=fatigue_model_status,
             )
 
     def get_session_summary(self, session_id: str) -> Optional[dict]:
@@ -541,6 +725,12 @@ class DrowsinessEngine:
                 "last_intoxication_score": session.last_intoxication_score,
                 "last_distraction_score": session.last_distraction_score,
                 "last_yawn_score": session.last_yawn_score,
+                "last_fatigue_action": session.last_fatigue_action,
+                "last_fatigue_confidence": session.last_fatigue_confidence,
+                "last_fatigue_model_status": session.last_fatigue_model_status,
+                "last_fatigue_level_score": session.last_fatigue_level_score,
+                "last_fatigue_level": session.last_fatigue_level,
+                "last_fatigue_update": session.last_fatigue_update.isoformat() if session.last_fatigue_update else "",
                 "last_detection_path": session.last_detection_path,
                 "last_latency_ms": session.last_latency_ms,
                 "estimated_fps": session.estimated_fps,
@@ -595,6 +785,8 @@ def health() -> dict:
         "service": "safe-motion-api",
         "face_model_available": engine._landmarker is not None,
         "face_model_error": engine._init_error,
+        "fatigue_model_available": bool(engine._fatigue_runtime.get("available")),
+        "fatigue_model_status": engine._fatigue_runtime.get("status", "unavailable"),
     }
 
 

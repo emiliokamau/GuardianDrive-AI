@@ -4,6 +4,7 @@ from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 import av
 import threading
+from pathlib import Path
 from streamlit_webrtc import VideoProcessorBase
 
 # Local imports
@@ -19,7 +20,10 @@ class DrowsinessDetector(VideoProcessorBase):
     def __init__(self):
         # Load Face Landmarker
         try:
-            base_options = python.BaseOptions(model_asset_path=MODEL_PATH)
+            model_path = Path(MODEL_PATH)
+            if not model_path.is_absolute():
+                model_path = Path(__file__).resolve().parents[2] / model_path
+            base_options = python.BaseOptions(model_asset_path=str(model_path))
             options = vision.FaceLandmarkerOptions(base_options=base_options,
                                                    output_face_blendshapes=True,
                                                    output_facial_transformation_matrixes=False,

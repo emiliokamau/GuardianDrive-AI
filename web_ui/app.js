@@ -1,10 +1,11 @@
 const API_BASE = window.SAFE_MOTION_API_BASE || "http://127.0.0.1:8000";
 const API_URL = `${API_BASE}/api`;
+const VOICE_API_BASE = window.VOICE_BOT_API_BASE || "http://127.0.0.1:5005";
 
 let EAR_THRESHOLD = 0.25;
 let CONSEC_FRAMES = 20;
 let PERCLOS_THRESHOLD = 0.3;
-const INTOXICATION_ALERT_THRESHOLD = 0.6;
+const INTOXICATION_ALERT_THRESHOLD = 0.75;
 const LIVE_CHART_MAX_POINTS = 90;
 
 const liveTabBtn = document.getElementById("liveTabBtn");
@@ -27,6 +28,8 @@ const soundToggle = document.getElementById("soundToggle");
 const voiceToggle = document.getElementById("voiceToggle");
 const darkToggle = document.getElementById("darkToggle");
 const exportSessionBtn = document.getElementById("exportSessionBtn");
+const voiceAssistBtn = document.getElementById("voiceAssistBtn");
+const voiceTranscriptEl = document.getElementById("voiceTranscript");
 
 const earThresholdEl = document.getElementById("earThreshold");
 const alertFramesEl = document.getElementById("alertFrames");
@@ -42,6 +45,9 @@ const intoxicationMetricEl = document.getElementById("intoxicationMetric");
 const distractionMetricEl = document.getElementById("distractionMetric");
 const yawnMetricEl = document.getElementById("yawnMetric");
 const cognitiveLoadMetricEl = document.getElementById("cognitiveLoadMetric");
+const fatigueActionMetricEl = document.getElementById("fatigueActionMetric");
+const fatigueConfidenceMetricEl = document.getElementById("fatigueConfidenceMetric");
+const fatigueModelStatusMetricEl = document.getElementById("fatigueModelStatusMetric");
 const hudEarEl = document.getElementById("hudEar");
 const hudPerclosEl = document.getElementById("hudPerclos");
 const hudRiskEl = document.getElementById("hudRisk");
@@ -51,6 +57,8 @@ const riskStripEl = document.getElementById("riskStrip");
 const fpsMetricEl = document.getElementById("fpsMetric");
 const latencyMetricEl = document.getElementById("latencyMetric");
 const stateDurationMetricEl = document.getElementById("stateDurationMetric");
+const fatigueActionStatEl = document.getElementById("fatigueActionStat");
+const fatigueConfidenceStatEl = document.getElementById("fatigueConfidenceStat");
 const framesMetricEl = document.getElementById("framesMetric");
 const eventsMetricEl = document.getElementById("eventsMetric");
 
@@ -118,6 +126,13 @@ let liveEarChart = null;
 let livePerclosChart = null;
 let liveIntoxicationChart = null;
 let liveRiskChart = null;
+let lastFatigueAction = "--";
+let lastFatigueConfidence = "--";
+let lastFatigueStatus = "--";
+let lastFatigueUpdated = "--";
+let voiceEnabled = false;
+let voiceListening = false;
+let voiceRecognition = null;
 const liveTelemetry = {
   labels: [],
   ear: [],
@@ -175,6 +190,115 @@ function playAlarm() {
   alarmMutedUntil = now + 2500;
   alarmAudio.currentTime = 0;
   alarmAudio.play().catch(() => {});
+}
+
+function setVoiceTranscript(text) {
+  if (!voiceTranscriptEl) return;
+  voiceTranscriptEl.textContent = text;
+}
+
+function stopVoiceRecognition() {
+  if (!voiceRecognition || !voiceListening) return;
+  voiceListening = false;
+  try {
+    voiceRecognition.stop();
+  } catch {
+    // Ignore stop errors from already-stopped recognition.
+  }
+  if (voiceAssistBtn) voiceAssistBtn.textContent = "Hold To Talk";
+}
+
+function speakAssistantReply(text) {
+  if (!voiceEnabled || !("speechSynthesis" in window)) return;
+  try {
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.rate = 1.0;
+    utter.pitch = 1.0;
+    window.speechSynthesis.speak(utter);
+  } catch {
+    // Speech synthesis unavailable in some browsers.
+  }
+}
+
+async function sendVoiceMessage(transcript) {
+  if (!transcript) return;
+  setVoiceTranscript(`You: ${transcript}`);
+
+  const context = {
+    driver_state: stateLabel?.textContent || "Unknown",
+    fatigue_action: lastFatigueAction,
+    fatigue_confidence: lastFatigueConfidence,
+    fatigue_model_status: lastFatigueStatus,
+  };
+
+  try {
+    const response = await fetch(`${VOICE_API_BASE}/voice/reply`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: transcript, context }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    const reply = data.reply || "Please keep your eyes on the road. I did not catch that.";
+    setVoiceTranscript(`Assistant: ${reply}`);
+    speakAssistantReply(reply);
+  } catch (error) {
+    const fallback = `Voice bot unavailable (${error.message}). Check Flask voice service.`;
+    setVoiceTranscript(fallback);
+    setAnalyticsInfo(fallback, true);
+  }
+}
+
+function initVoiceRecognition() {
+  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!Recognition) {
+    setVoiceTranscript("Speech recognition not supported in this browser.");
+    return;
+  }
+
+  voiceRecognition = new Recognition();
+  voiceRecognition.lang = "en-US";
+  voiceRecognition.interimResults = false;
+  voiceRecognition.continuous = false;
+
+  voiceRecognition.onresult = (event) => {
+    const transcript = event.results?.[0]?.[0]?.transcript?.trim() || "";
+    void sendVoiceMessage(transcript);
+  };
+
+  voiceRecognition.onerror = (event) => {
+    setVoiceTranscript(`Voice error: ${event.error}`);
+  };
+
+  voiceRecognition.onend = () => {
+    voiceListening = false;
+    if (voiceAssistBtn) voiceAssistBtn.textContent = "Hold To Talk";
+  };
+}
+
+function startVoiceRecognition() {
+  if (!voiceEnabled) {
+    setVoiceTranscript("Enable Voice Alerts first.");
+    return;
+  }
+  if (!voiceRecognition) {
+    initVoiceRecognition();
+  }
+  if (!voiceRecognition || voiceListening) return;
+
+  try {
+    voiceListening = true;
+    setVoiceTranscript("Listening...");
+    if (voiceAssistBtn) voiceAssistBtn.textContent = "Listening...";
+    voiceRecognition.start();
+  } catch {
+    voiceListening = false;
+  }
 }
 
 async function fetchConfig() {
@@ -303,6 +427,20 @@ function updateLiveMetrics(payload) {
   const distractionPercent = Math.round((payload.distraction_score || 0) * 100);
   const yawnPercent = Math.round((payload.yawn_score || 0) * 100);
   const cognitivePercent = Math.round((payload.cognitive_load || 0) * 100);
+  const fatigueAction = payload.fatigue_action || "unknown";
+  const fatigueLevel = payload.fatigue_level || "low";
+  const fatigueConfidenceSource = typeof payload.fatigue_level_score === "number"
+    ? payload.fatigue_level_score
+    : payload.fatigue_confidence;
+  const fatigueStatusRaw = String(payload.fatigue_model_status || "unavailable");
+  const fatigueLastUpdateRaw = String(payload.fatigue_last_update || "").trim();
+  const fatigueModelReady = fatigueStatusRaw.toLowerCase().startsWith("ready");
+  const fatigueActionKnown = fatigueAction === "fatigue" || fatigueAction === "nonfatigue";
+  const fatigueAnalyticsLive = fatigueModelReady && fatigueActionKnown;
+  const fatigueConfidence = typeof fatigueConfidenceSource === "number"
+    ? `${Math.round(fatigueConfidenceSource * 100)}%`
+    : "--";
+  const fatigueStatus = fatigueAnalyticsLive ? "Real Analytics" : "Loading";
   const yawText = `${(payload.yaw || 0).toFixed(1)} deg`;
   const pitchText = `${(payload.pitch || 0).toFixed(1)} deg`;
   const blinkText = `${(payload.blink_rate || 0).toFixed(1)}/min`;
@@ -317,6 +455,9 @@ function updateLiveMetrics(payload) {
   if (distractionMetricEl) distractionMetricEl.textContent = `${distractionPercent}%`;
   if (yawnMetricEl) yawnMetricEl.textContent = `${yawnPercent}%`;
   if (cognitiveLoadMetricEl) cognitiveLoadMetricEl.textContent = `${cognitivePercent}%`;
+  if (fatigueActionMetricEl) fatigueActionMetricEl.textContent = fatigueAnalyticsLive ? `${fatigueAction} (${fatigueLevel})` : "Loading...";
+  if (fatigueConfidenceMetricEl) fatigueConfidenceMetricEl.textContent = fatigueAnalyticsLive ? fatigueConfidence : "--";
+  if (fatigueModelStatusMetricEl) fatigueModelStatusMetricEl.textContent = fatigueStatus;
 
   if (hudEarEl) hudEarEl.textContent = typeof payload.ear === "number" ? payload.ear.toFixed(2) : "--";
   if (hudPerclosEl) hudPerclosEl.textContent = `${perclosPercent}%`;
@@ -327,6 +468,17 @@ function updateLiveMetrics(payload) {
   fpsMetricEl.textContent = `${(payload.estimated_fps || 0).toFixed(1)}`;
   latencyMetricEl.textContent = `${(payload.latency_ms || 0).toFixed(0)} ms`;
   stateDurationMetricEl.textContent = `${(payload.state_duration_sec || 0).toFixed(1)}s`;
+  if (fatigueActionStatEl) fatigueActionStatEl.textContent = fatigueAnalyticsLive ? `${fatigueAction} (${fatigueLevel})` : "Loading...";
+  if (fatigueConfidenceStatEl) fatigueConfidenceStatEl.textContent = fatigueAnalyticsLive ? fatigueConfidence : "--";
+  lastFatigueAction = fatigueAnalyticsLive ? `${fatigueAction} (${fatigueLevel})` : "Loading...";
+  lastFatigueConfidence = fatigueAnalyticsLive ? fatigueConfidence : "--";
+  lastFatigueStatus = fatigueStatus;
+  if (fatigueLastUpdateRaw) {
+    const fatigueUpdatedDate = new Date(fatigueLastUpdateRaw);
+    lastFatigueUpdated = Number.isNaN(fatigueUpdatedDate.getTime())
+      ? fatigueLastUpdateRaw
+      : fatigueUpdatedDate.toLocaleTimeString();
+  }
 
   const driverState = (payload.driver_state || "").toLowerCase();
   if (payload.drowsy || driverState === "asleep" || driverState === "high risk" || driverState === "drowsy") {
@@ -336,7 +488,7 @@ function updateLiveMetrics(payload) {
   } else if (driverState.includes("distracted")) {
     setStatus("Distracted", "warn");
     setMonitoringBadge("active", "Active - Distracted");
-  } else if (intoxicationPercent >= 60) {
+  } else if (intoxicationPercent >= INTOXICATION_ALERT_THRESHOLD * 100) {
     setStatus("Intoxication Risk", "danger");
     setMonitoringBadge("active", "Active - Alert");
     playAlarm();
@@ -344,8 +496,8 @@ function updateLiveMetrics(payload) {
     setStatus("Normal", "ok");
     setMonitoringBadge("active", "Active");
   } else {
-    setStatus("No Face", "warn");
-    setMonitoringBadge("active", "Active - No Face");
+    setStatus("Scanning", "warn");
+    setMonitoringBadge("active", "Active - Scanning");
   }
 }
 
@@ -401,7 +553,7 @@ async function refreshSessionSummary() {
     fpsMetricEl.textContent = `${(s.estimated_fps || 0).toFixed(1)}`;
     latencyMetricEl.textContent = `${(s.last_latency_ms || 0).toFixed(0)} ms`;
     stateDurationMetricEl.textContent = `${(s.state_duration_sec || 0).toFixed(1)}s`;
-    sessionSummaryEl.textContent = `Session ${s.session_id} | Frames: ${s.analyzed_frames} | Drowsy events: ${s.drowsy_events} | Last EAR: ${s.last_ear == null ? "--" : s.last_ear.toFixed(3)} | Attention: ${s.last_attention_score == null ? "--" : (s.last_attention_score * 100).toFixed(0)}% | Intoxication: ${s.last_intoxication_score == null ? "--" : (s.last_intoxication_score * 100).toFixed(0)}% | Detect path: ${s.last_detection_path || "raw"} | Last status: ${s.last_status}`;
+    sessionSummaryEl.textContent = `Session ${s.session_id} | Frames: ${s.analyzed_frames} | Drowsy events: ${s.drowsy_events} | Last EAR: ${s.last_ear == null ? "--" : s.last_ear.toFixed(3)} | Attention: ${s.last_attention_score == null ? "--" : (s.last_attention_score * 100).toFixed(0)}% | Intoxication: ${s.last_intoxication_score == null ? "--" : (s.last_intoxication_score * 100).toFixed(0)}% | Fatigue action: ${lastFatigueAction} (${lastFatigueConfidence}) | Fatigue model: ${lastFatigueStatus} | Fatigue updated: ${lastFatigueUpdated} | Detect path: ${s.last_detection_path || "raw"} | Last status: ${s.last_status}`;
   } catch {
     // ignore summary errors
   }
@@ -984,9 +1136,36 @@ if (soundToggle) {
 }
 
 if (voiceToggle) {
-  voiceToggle.addEventListener("change", () => {
-    setAnalyticsInfo("Voice alerts will be enabled in the next milestone.");
+  voiceToggle.addEventListener("change", (event) => {
+    voiceEnabled = !!event.target.checked;
+    setVoiceTranscript(voiceEnabled ? "Voice assistant enabled." : "Voice assistant disabled.");
+    if (!voiceEnabled) {
+      stopVoiceRecognition();
+      if ("speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+    }
   });
+}
+
+if (voiceAssistBtn) {
+  voiceAssistBtn.addEventListener("mousedown", () => {
+    startVoiceRecognition();
+  });
+  voiceAssistBtn.addEventListener("mouseup", () => {
+    stopVoiceRecognition();
+  });
+  voiceAssistBtn.addEventListener("mouseleave", () => {
+    stopVoiceRecognition();
+  });
+  voiceAssistBtn.addEventListener("touchstart", (event) => {
+    event.preventDefault();
+    startVoiceRecognition();
+  }, { passive: false });
+  voiceAssistBtn.addEventListener("touchend", (event) => {
+    event.preventDefault();
+    stopVoiceRecognition();
+  }, { passive: false });
 }
 
 if (darkToggle) {

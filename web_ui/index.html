@@ -6,7 +6,7 @@
   <title>Safe Motion</title>
   <link rel="stylesheet" href="/styles.css">
   <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script defer src="/app.js"></script>
+  <script defer src="/app.js?v=20260327-2"></script>
 </head>
 <body>
   <div class="layout">
@@ -48,7 +48,12 @@
         <label><input id="soundToggle" type="checkbox" checked> Sound Alerts</label>
         <label><input id="voiceToggle" type="checkbox"> Voice Alerts</label>
         <label><input id="darkToggle" type="checkbox" checked> Dark Mode</label>
+        <button id="voiceAssistBtn" class="btn secondary" type="button">Hold To Talk</button>
         <button id="exportSessionBtn" class="btn secondary" type="button">Export Session</button>
+      </section>
+
+      <section class="card-slim" style="margin-top: 10px;">
+        <p id="voiceTranscript" class="subtle">Voice assistant ready. Press and hold "Hold To Talk".</p>
       </section>
 
       <section id="livePane" class="live-pane">
@@ -92,6 +97,9 @@
             <article class="meter"><label>Distraction</label><p id="distractionMetric">--</p></article>
             <article class="meter"><label>Yawn Score</label><p id="yawnMetric">--</p></article>
             <article class="meter"><label>Cognitive Load</label><p id="cognitiveLoadMetric">--</p></article>
+            <article class="meter"><label>Fatigue Action</label><p id="fatigueActionMetric">--</p></article>
+            <article class="meter"><label>Fatigue Confidence</label><p id="fatigueConfidenceMetric">--</p></article>
+            <article class="meter"><label>Fatigue Model</label><p id="fatigueModelStatusMetric">--</p></article>
           </div>
 
           <div id="sessionSummary" class="session-box">Session summary will appear after analysis starts.</div>
@@ -105,6 +113,8 @@
           <div class="stat-row"><span>FPS</span><strong id="fpsMetric">0.0</strong></div>
           <div class="stat-row"><span>Latency</span><strong id="latencyMetric">0 ms</strong></div>
           <div class="stat-row"><span>State Duration</span><strong id="stateDurationMetric">0.0s</strong></div>
+          <div class="stat-row"><span>Fatigue Action</span><strong id="fatigueActionStat">--</strong></div>
+          <div class="stat-row"><span>Fatigue Confidence</span><strong id="fatigueConfidenceStat">--</strong></div>
           <div class="stat-row"><span>Frames Analyzed</span><strong id="framesMetric">0</strong></div>
           <div class="stat-row"><span>Drowsy Events</span><strong id="eventsMetric">0</strong></div>
         </div>
